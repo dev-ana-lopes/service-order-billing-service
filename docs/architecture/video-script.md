@@ -1,10 +1,10 @@
-# Roteiro do Vídeo da Fase 3
+﻿# Roteiro do Vídeo da Fase 3
 
 ## 1. Contexto
 
 Apresentar os quatro repositórios:
 
-- `service-order-api`
+- `service-order-billing-service`
 - `service-order-auth-lambda`
 - `service-order-infra-k8s`
 - `service-order-infra-db`
@@ -46,3 +46,4 @@ Mostrar:
 ## 7. Encerramento
 
 Reforçar as decisões: k3s em EC2 para custo baixo, RDS para banco relacional gerenciado, Lambda/API Gateway para autenticação CPF e JWT compartilhado para integração entre bordas.
+

@@ -1,4 +1,4 @@
-# Authentication Sequence
+﻿# Authentication Sequence
 
 ```mermaid
 sequenceDiagram
@@ -6,7 +6,7 @@ sequenceDiagram
   participant APIGW as API Gateway HTTP API
   participant Lambda as Lambda Auth CPF
   participant RDS as RDS PostgreSQL
-  participant API as service-order-api
+  participant API as service-order-billing-service
 
   Client->>APIGW: POST /auth/cpf { cpf }
   APIGW->>Lambda: Invoke service-order-auth-cpf
@@ -19,3 +19,4 @@ sequenceDiagram
   API->>API: Validate customer JWT with CUSTOMER_JWT_SECRET
   API-->>Client: Protected response
 ```
+

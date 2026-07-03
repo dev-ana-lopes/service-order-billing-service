@@ -1,4 +1,4 @@
-# Troubleshooting
+﻿# Troubleshooting
 
 ## API sobe e cai em loop
 
@@ -62,7 +62,7 @@ Produção:
 ### Pods em CrashLoopBackOff
 
 ```bash
-kubectl logs -n service-order -l app=service-order-api --tail=100
+kubectl logs -n service-order -l app=service-order-billing-service --tail=100
 
 kubectl describe pod <pod-name> -n service-order
 
@@ -82,7 +82,7 @@ Causas comuns:
 
 kubectl describe pod <pod-name> -n service-order
 
-docker pull ghcr.io/<owner>/service-order-api:sha-<commit>
+docker pull ghcr.io/<owner>/service-order-billing-service:sha-<commit>
 
 kubectl get secret -n service-order | grep ghcr
 ```
@@ -90,9 +90,9 @@ kubectl get secret -n service-order | grep ghcr
 ### Migration Job Falhando
 
 ```bash
-kubectl describe job service-order-api-migrate -n service-order
+kubectl describe job service-order-billing-service-migrate -n service-order
 
-kubectl logs job/service-order-api-migrate -n service-order --all-containers=true
+kubectl logs job/service-order-billing-service-migrate -n service-order --all-containers=true
 
 kubectl run -it --rm debug --image=busybox --restart=Never -- \
   sh -c "nc -zv <database-host> 5432"
@@ -111,7 +111,7 @@ Causas comuns:
 
 kubectl get endpoints -n service-order -o wide
 
-kubectl port-forward -n service-order svc/service-order-api 8000:80
+kubectl port-forward -n service-order svc/service-order-billing-service 8000:80
 
 curl http://localhost:8000/health
 ```
@@ -119,7 +119,7 @@ curl http://localhost:8000/health
 ### Health check falhando
 
 ```bash
-kubectl logs deployment/service-order-api -n service-order --tail=100
+kubectl logs deployment/service-order-billing-service -n service-order --tail=100
 
 kubectl exec -it <pod-name> -n service-order -- curl http://localhost:8000/health
 
@@ -166,7 +166,7 @@ Verificações:
 - `EC2_USER`
 - `EC2_SSH_PRIVATE_KEY`
 - `APP_ENV_PROD`
-- existência do diretório `/opt/service-order-api` na EC2
+- existência do diretório `/opt/service-order-billing-service` na EC2
 
 ## Checklist de segurança operacional
 
@@ -177,3 +177,4 @@ Verificações:
 - limitar `CORS_ALLOWED_ORIGINS`
 - validar backups e retenção do RDS
 - rotacionar credenciais do SMTP e do registry
+

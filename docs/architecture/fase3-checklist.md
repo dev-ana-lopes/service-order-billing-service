@@ -1,4 +1,4 @@
-# Checklist da Fase 3
+﻿# Checklist da Fase 3
 
 Este arquivo e o ponto canonico para a checklist da Fase 3. O historico
 detalhado permanece em `docs/checklists/fase3-checklist.md`.
@@ -21,10 +21,11 @@ detalhado permanece em `docs/checklists/fase3-checklist.md`.
 
 - Provisionar k3s em EC2.
 - Provisionar RDS PostgreSQL.
-- Publicar imagem `ghcr.io/<owner>/service-order-api:sha-<commit>`.
+- Publicar imagem `ghcr.io/<owner>/service-order-billing-service:sha-<commit>`.
 - Aplicar manifests renderizados no k3s.
 - Publicar Lambda e API Gateway.
 - Chamar `POST /auth/cpf`.
 - Usar o Bearer Token na API protegida.
 - Mostrar logs no Datadog, healthchecks via API Gateway/Synthetic Monitoring e
   HPA entre 2 e 5 replicas.
+

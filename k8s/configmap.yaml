@@ -1,7 +1,7 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: service-order-api-config
+  name: service-order-billing-service-config
   namespace: service-order
 data:
   ENVIRONMENT: "production"
@@ -21,12 +21,13 @@ data:
   JWT_EXPIRATION_MINUTES: "60"
   CUSTOMER_JWT_ALGORITHM: "HS256"
   CUSTOMER_JWT_ISSUER: "service-order-auth-lambda/production"
-  DD_SERVICE: "service-order-api"
+  DD_SERVICE: "service-order-billing-service"
   DD_ENV: "production"
   DD_VERSION: "3.0.0"
   OTEL_ENABLED: "false"
-  OTEL_SERVICE_NAME: "service-order-api"
+  OTEL_SERVICE_NAME: "service-order-billing-service"
   OTEL_EXPORTER_OTLP_ENDPOINT: ""
   DD_TRACE_ENABLED: "false"
   HEALTHCHECK_TIMEOUT_SECONDS: "5"
   MIGRATE_ON_STARTUP: "false"
+

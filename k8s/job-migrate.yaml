@@ -1,7 +1,7 @@
-apiVersion: batch/v1
+﻿apiVersion: batch/v1
 kind: Job
 metadata:
-  name: service-order-api-migrate
+  name: service-order-billing-service-migrate
   namespace: service-order
 spec:
   backoffLimit: 3
@@ -14,12 +14,13 @@ spec:
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
-                name: service-order-api-config
+                name: service-order-billing-service-config
             - secretRef:
-                name: service-order-api-secret
+                name: service-order-billing-service-secret
           command:
             - alembic
             - -c
             - alembic/alembic.ini
             - upgrade
             - head
+

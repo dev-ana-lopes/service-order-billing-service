@@ -1,4 +1,4 @@
-# Deployment Runbooks
+﻿# Deployment Runbooks
 
 Kubernetes is the primary production/demo deployment path for this repository.
 Docker Compose is preserved only as a legacy fallback.
@@ -44,7 +44,7 @@ GitHub Environment `production` must provide:
 OTEL_ENABLED=false
 DD_TRACE_ENABLED=false
 OTEL_EXPORTER_OTLP_ENDPOINT=
-DD_SERVICE=service-order-api
+DD_SERVICE=service-order-billing-service
 DD_ENV=production
 DD_VERSION=3.0.0
 ```
@@ -79,7 +79,7 @@ Use this path only for emergency recovery or local operational comparison.
 ```bash
 cp .env.prod.example .env.prod
 python3 scripts/deploy/prepare_env.py .env.prod
-API_IMAGE=service-order-api:prod ./scripts/deploy/release.sh
+API_IMAGE=service-order-billing-service:prod ./scripts/deploy/release.sh
 ```
 
 Validate:
@@ -92,3 +92,4 @@ curl http://<host>:8000/docs
 
 The legacy Compose flow uses the same application schema and environment
 validation, but it is not the main Phase 3 demonstration path.
+

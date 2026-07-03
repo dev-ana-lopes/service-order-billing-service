@@ -1,4 +1,4 @@
-# Datadog Runbook
+﻿# Datadog Runbook
 
 Datadog is the primary observability tool for the current Phase 3 delivery.
 The active scope is logs, Kubernetes/container visibility, dashboards/monitors
@@ -40,10 +40,10 @@ kubectl get svc -n datadog
 Validate application logs from Kubernetes:
 
 ```bash
-kubectl logs -n service-order deployment/service-order-api --tail=50
+kubectl logs -n service-order deployment/service-order-billing-service --tail=50
 ```
 
-Then confirm in Datadog Logs that `service:service-order-api` entries include
+Then confirm in Datadog Logs that `service:service-order-billing-service` entries include
 `correlation_id` and `request_id`.
 
 ## Synthetic Monitoring
@@ -65,7 +65,7 @@ The API HPA is configured in Kubernetes to monitor CPU and scale pods between
 
 ```bash
 kubectl get hpa -n service-order
-kubectl describe hpa service-order-api -n service-order
+kubectl describe hpa service-order-billing-service -n service-order
 ```
 
 ## Planned Trace Enablement
@@ -81,3 +81,4 @@ kubectl describe svc -n datadog datadog-agent
 Only after that validation should tracing be enabled and the API should point
 to the Datadog Agent OTLP HTTP endpoint in the `datadog` namespace. Do not
 enable this for the current delivery without validating the receiver.
+

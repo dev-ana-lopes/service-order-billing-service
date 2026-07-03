@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 Este arquivo define o contexto operacional para agentes Codex neste repositório.
 Escopo: toda a árvore do projeto.
@@ -61,14 +61,14 @@ Escopo: toda a árvore do projeto.
 - `python3 scripts/deploy/render_k8s_manifests.py --env-file <env-file> --output-dir <dir> --image <ghcr-image> [--namespace <ns>]`
 - Nunca aplicar `k8s/deployment.yaml` ou `k8s/job-migrate.yaml` com placeholder (`__API_IMAGE__` ou `${API_IMAGE}`).
 - Nunca depender de imagem local no cluster.
-- A imagem de deploy deve ser GHCR no padrão `ghcr.io/<owner>/service-order-api:<tag>`.
+- A imagem de deploy deve ser GHCR no padrão `ghcr.io/<owner>/service-order-billing-service:<tag>`.
 
 ## 8) GHCR e versionamento de tags
 
 - Tag principal de CI/CD: `sha-<commit_sha>` (padrão do workflow atual).
 - Tag para testes manuais: `dev-<timestamp>`.
 - Tag semântica (`vX.Y.Z`) para releases planejadas/documentadas.
-- `ghcr.io/<owner>/service-order-api:<tag>` deve ser consistente entre build/push e manifests renderizados.
+- `ghcr.io/<owner>/service-order-billing-service:<tag>` deve ser consistente entre build/push e manifests renderizados.
 
 ## 9) GHCR público vs privado
 
@@ -148,3 +148,4 @@ Escopo: toda a árvore do projeto.
 - Preferir correção na causa raiz e evitar mudanças fora de escopo.
 - Validar com os comandos disponíveis no projeto.
 - Em dúvida entre caminhos de alto impacto, escolher o mais simples e consistente com `k3s + EC2 + RDS + GHCR`.
+

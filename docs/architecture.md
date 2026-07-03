@@ -1,4 +1,4 @@
-# Arquitetura da solução
+﻿# Arquitetura da solução
 
 ## Visão geral
 
@@ -149,7 +149,7 @@ flowchart LR
     GHA --> CI["Lint + Tests + Coverage + Docker + Terraform + K8S validation"]
     CI --> GHCR["GHCR"]
     GHCR --> K3S["EC2 com k3s"]
-    K3S --> API["Deployment service-order-api"]
+    K3S --> API["Deployment service-order-billing-service"]
     API --> RDS["RDS PostgreSQL"]
 ```
 
@@ -159,3 +159,4 @@ flowchart LR
 - demo principal: `k3s` single-node em EC2;
 - banco fora do cluster: RDS PostgreSQL;
 - fallback preservado: deploy legado com Docker Compose.
+

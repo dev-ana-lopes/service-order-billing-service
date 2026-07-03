@@ -1,4 +1,4 @@
-# RFC: Multi-Repository CI/CD Strategy
+﻿# RFC: Multi-Repository CI/CD Strategy
 
 ## Status
 
@@ -6,7 +6,7 @@ Accepted for Phase 3 demo.
 
 ## Repositories
 
-- `service-order-api`: FastAPI application, Docker image, k8s manifests and
+- `service-order-billing-service`: FastAPI application, Docker image, k8s manifests and
   application deployment workflow.
 - `service-order-auth-lambda`: CPF authentication Lambda, package artifact,
   tests, deployment notes and Lambda-specific infrastructure.
@@ -26,7 +26,7 @@ empty or different state could attempt to recreate existing VPC, security group,
 EC2 or RDS resources.
 
 The CPF authentication Lambda is owned by `service-order-auth-lambda`. The
-`service-order-api` workflow must not package, deploy or validate Terraform for
+`service-order-billing-service` workflow must not package, deploy or validate Terraform for
 that Lambda.
 
 ## Current Validation
@@ -50,3 +50,4 @@ For a real production setup:
 3. Grant CI least-privilege AWS permissions.
 4. Enable protected environment approval for `terraform apply`.
 5. Keep application deploy independent from infrastructure apply.
+

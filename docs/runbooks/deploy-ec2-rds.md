@@ -1,4 +1,4 @@
-# Runbook de Deploy em EC2 + RDS
+﻿# Runbook de Deploy em EC2 + RDS
 
 ## Objetivo
 
@@ -15,7 +15,7 @@ Executar deploy de produção da API com Kubernetes (`k3s`) na EC2 e PostgreSQL 
 - Infra criada pelo Terraform em `infra/`
 - EC2 com `k3s`, `kubectl`, `docker` e acesso ao RDS
 - Acesso SSH da pipeline para a EC2
-- Repositório disponível em `/opt/service-order-api` na EC2 (sincronizado no workflow)
+- Repositório disponível em `/opt/service-order-billing-service` na EC2 (sincronizado no workflow)
 
 ## Configuração do GitHub (produção)
 
@@ -33,7 +33,7 @@ Executar deploy de produção da API com Kubernetes (`k3s`) na EC2 e PostgreSQL 
 ## Pipeline de deploy Kubernetes (CI/CD)
 
 1. `validate` (PR/push): lint, testes, validação de render de manifests
-2. `build-publish` (push/main): build + push para `ghcr.io/<owner>/service-order-api:sha-<commit_sha>`
+2. `build-publish` (push/main): build + push para `ghcr.io/<owner>/service-order-billing-service:sha-<commit_sha>`
 3. `deploy-k8s-ec2` (push/main): SSH na EC2 e execução do deploy no cluster local `k3s`
 
 ## Passo a passo manual (contingência)
@@ -49,7 +49,7 @@ ssh -i <key>.pem ec2-user@<ec2_public_ip>
 ### 2. Preparar ambiente
 
 ```bash
-cd /opt/service-order-api
+cd /opt/service-order-billing-service
 cp .env.prod.example .env.prod
 # preencher variáveis reais
 python3 scripts/deploy/prepare_env.py .env.prod
@@ -58,7 +58,7 @@ python3 scripts/deploy/prepare_env.py .env.prod
 ### 3. Definir imagem do GHCR
 
 ```bash
-export IMAGE_REF=ghcr.io/<owner>/service-order-api:sha-<commit_sha>
+export IMAGE_REF=ghcr.io/<owner>/service-order-billing-service:sha-<commit_sha>
 ```
 
 ### 4. Renderizar manifests com imagem explícita
@@ -77,12 +77,12 @@ python3 scripts/deploy/render_k8s_manifests.py \
 kubectl apply -f .rendered-k8s/namespace.yaml
 kubectl apply -f .rendered-k8s/configmap.rendered.yaml -f .rendered-k8s/secret.rendered.yaml
 
-kubectl delete job -n service-order service-order-api-migrate --ignore-not-found
+kubectl delete job -n service-order service-order-billing-service-migrate --ignore-not-found
 kubectl apply -f .rendered-k8s/job-migrate.yaml
-kubectl wait --for=condition=complete job/service-order-api-migrate -n service-order --timeout=300s
+kubectl wait --for=condition=complete job/service-order-billing-service-migrate -n service-order --timeout=300s
 
 kubectl apply -f .rendered-k8s/deployment.yaml -f .rendered-k8s/service.yaml -f .rendered-k8s/hpa.yaml
-kubectl rollout status deployment/service-order-api -n service-order --timeout=300s
+kubectl rollout status deployment/service-order-billing-service -n service-order --timeout=300s
 ```
 
 ### 6. Validar pós-deploy
@@ -97,3 +97,4 @@ curl http://<ec2-public-ip>/health/ready
 ## Fallback legado (Docker Compose)
 
 O fluxo Compose permanece apenas para contingência operacional. Para esse procedimento, consulte `README.deploy.md`.
+

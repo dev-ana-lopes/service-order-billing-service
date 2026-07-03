@@ -5,7 +5,7 @@ from starlette.responses import Response
 
 REQUEST_COUNTER = Counter(
     "http_requests_total",
-    "Total HTTP requests processed by the API.",
+    "Total HTTP requests processed by the service.",
     ["method", "path", "status_code"],
 )
 REQUEST_DURATION = Histogram(
@@ -13,20 +13,6 @@ REQUEST_DURATION = Histogram(
     "HTTP request duration in milliseconds.",
     ["method", "path"],
     buckets=(5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000),
-)
-SERVICE_ORDERS_CREATED = Counter(
-    "service_orders_created_total",
-    "Number of service orders created.",
-)
-SERVICE_ORDER_FAILURES = Counter(
-    "service_order_processing_failures_total",
-    "Number of service order processing failures.",
-    ["stage"],
-)
-SERVICE_ORDER_STATUS = Counter(
-    "service_order_status_total",
-    "Number of service order events by status.",
-    ["status"],
 )
 
 

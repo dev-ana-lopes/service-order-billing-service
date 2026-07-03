@@ -1,4 +1,4 @@
-name: ci-cd-service-order-api
+name: ci-cd-service-order-billing-service
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.12"
-  API_IMAGE_NAME: service-order-api
+  API_IMAGE_NAME: service-order-billing-service
   K8S_NAMESPACE: service-order
   RENDERED_K8S_DIR: .rendered-k8s
 
@@ -46,13 +46,17 @@ jobs:
           DD_TRACE_ENABLED: "false"
           OTEL_EXPORTER_OTLP_ENDPOINT: ""
         run: make test-cov
+      - name: Run SonarCloud scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: Validate rendered manifests
         run: |
           TMP_DIR="$(mktemp -d)"
           ENV_FILE="${TMP_DIR}/k8s.env"
           OUTPUT_DIR="${TMP_DIR}/rendered-k8s"
           cat <<'VAR' > "${ENV_FILE}"
-          APP_NAME=service-order-api
+          APP_NAME=service-order-billing-service
           APP_VERSION=3.0.0
           ENVIRONMENT=production
           LOG_LEVEL=INFO
@@ -70,16 +74,16 @@ jobs:
           JWT_EXPIRATION_MINUTES=60
           APPROVAL_TOKEN_TTL_MINUTES=60
           OTEL_ENABLED=false
-          OTEL_SERVICE_NAME=service-order-api
+          OTEL_SERVICE_NAME=service-order-billing-service
           OTEL_EXPORTER_OTLP_ENDPOINT=
           DD_TRACE_ENABLED=false
-          DD_SERVICE=service-order-api
+          DD_SERVICE=service-order-billing-service
           DD_ENV=production
           DD_VERSION=3.0.0
           DD_API_KEY=dd-api-key-placeholder-1234567890
           HEALTHCHECK_TIMEOUT_SECONDS=5
           VAR
-          python3 scripts/deploy/render_k8s_manifests.py --env-file "${ENV_FILE}" --output-dir "${OUTPUT_DIR}" --image ghcr.io/example/service-order-api:sha-test
+          python3 scripts/deploy/render_k8s_manifests.py --env-file "${ENV_FILE}" --output-dir "${OUTPUT_DIR}" --image ghcr.io/example/service-order-billing-service:sha-test
   build-publish:
     if: github.event_name != 'pull_request'
     needs: validate
@@ -137,15 +141,15 @@ jobs:
           kubectl apply -f /home/ec2-user/.rendered-k8s/configmap.rendered.yaml
           kubectl apply -f /home/ec2-user/.rendered-k8s/secret.rendered.yaml
 
-          DATABASE_URL_API="$(kubectl get secret -n service-order service-order-api-secret -o jsonpath='{.data.DATABASE_URL}' | base64 -d)"
+          DATABASE_URL_API="$(kubectl get secret -n service-order service-order-billing-service-secret -o jsonpath='{.data.DATABASE_URL}' | base64 -d)"
           DATABASE_URL_MIGRATION="$(printf '%s' "$DATABASE_URL_API" | sed 's/?ssl=require/?sslmode=require/g')"
 
-          kubectl create secret generic service-order-api-migrate-secret \
+          kubectl create secret generic service-order-billing-service-migrate-secret \
             -n service-order \
             --from-literal=DATABASE_URL="$DATABASE_URL_MIGRATION" \
             --dry-run=client -o yaml | kubectl apply -f -
 
-          kubectl delete job -n service-order service-order-api-migrate --ignore-not-found
+          kubectl delete job -n service-order service-order-billing-service-migrate --ignore-not-found
 
           kubectl patch -n service-order -f /home/ec2-user/.rendered-k8s/job-migrate.yaml \
             --local=true \
@@ -156,14 +160,14 @@ jobs:
                 "path": "/spec/template/spec/containers/0/envFrom/-",
                 "value": {
                   "secretRef": {
-                    "name": "service-order-api-migrate-secret"
+                    "name": "service-order-billing-service-migrate-secret"
                   }
                 }
               }
             ]' \
             -o yaml > /tmp/job-migrate.yaml
           kubectl apply -f /tmp/job-migrate.yaml
-          kubectl wait --for=condition=complete job/service-order-api-migrate -n service-order --timeout=300s
+          kubectl wait --for=condition=complete job/service-order-billing-service-migrate -n service-order --timeout=300s
 
           kubectl apply -f /home/ec2-user/.rendered-k8s/deployment.yaml
           kubectl apply -f /home/ec2-user/.rendered-k8s/service.yaml
@@ -171,7 +175,7 @@ jobs:
 
           if [ -f /home/ec2-user/.rendered-k8s/ingress.yaml ]; then
             kubectl apply -f /home/ec2-user/.rendered-k8s/ingress.yaml
-            kubectl patch ingress service-order-api \
+            kubectl patch ingress service-order-billing-service \
               -n service-order \
               --type='json' \
               -p='[
@@ -183,7 +187,7 @@ jobs:
               ]' || true
           fi
 
-          kubectl rollout status deployment/service-order-api -n service-order --timeout=300s
+          kubectl rollout status deployment/service-order-billing-service -n service-order --timeout=300s
           kubectl get pods -n service-order
           kubectl get svc -n service-order
           kubectl get ingress -n service-order || true
@@ -203,3 +207,5 @@ jobs:
 
           echo "Public API smoke test failed"
           exit 1
+
+

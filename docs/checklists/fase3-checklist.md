@@ -1,6 +1,6 @@
-# Checklist Fase 3
+﻿# Checklist Fase 3
 
-- [x] `service-order-api` criado/atualizado
+- [x] `service-order-billing-service` criado/atualizado
 - [x] `service-order-auth-lambda` criado
 - [x] `service-order-infra-k8s` criado
 - [x] `service-order-infra-db` criado
@@ -13,3 +13,4 @@
 - [x] docs/adr e docs/rfc em todos os repositórios
 - [x] instrução para adicionar `soat-architecture`
 - [x] roteiro de vídeo em `docs/video-script.md`
+

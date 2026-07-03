@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+﻿#!/usr/bin/env sh
 # ============================================================================
 # LEGACY/FALLBACK: Docker Compose Release Script
 # ============================================================================
@@ -16,7 +16,7 @@
 
 set -eu
 
-APP_DIR="${APP_DIR:-/opt/service-order-api}"
+APP_DIR="${APP_DIR:-/opt/service-order-billing-service}"
 ENV_FILE="${ENV_FILE:-.env.prod}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 
@@ -30,3 +30,4 @@ fi
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d api
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
+

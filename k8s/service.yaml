@@ -1,15 +1,16 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: Service
 metadata:
-  name: service-order-api
+  name: service-order-billing-service
   namespace: service-order
   labels:
-    app: service-order-api
+    app: service-order-billing-service
 spec:
   type: ClusterIP
   selector:
-    app: service-order-api
+    app: service-order-billing-service
   ports:
     - name: http
       port: 80
       targetPort: 8000
+

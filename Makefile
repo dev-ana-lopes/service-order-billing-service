@@ -1,4 +1,4 @@
-.PHONY: help install dev-install lint format test test-cov test-integration migrate migrate-create migrate-down run run-dev compose-up compose-down compose-logs compose-db-shell compose-prod-up compose-prod-down compose-smoke test-mailhog-e2e clean build-docker docker-run check
+﻿.PHONY: help install dev-install lint format test test-cov test-integration migrate migrate-create migrate-down run run-dev compose-up compose-down compose-logs compose-db-shell compose-prod-up compose-prod-down compose-smoke test-mailhog-e2e clean build-docker docker-run check
 
 help:
 	@echo "Service Order Management API - Make Commands"
@@ -95,12 +95,13 @@ clean:
 	rm -rf .pytest_cache .coverage coverage.xml htmlcov build dist
 
 build-docker:
-	docker build -t service-order-api:local .
+	docker build -t service-order-billing-service:local .
 
 docker-run:
 	docker run -p 8000:8000 \
 		-e DATABASE_URL="postgresql+asyncpg://user:password@host:5432/service_order_db" \
-		service-order-api:local
+		service-order-billing-service:local
 
 check: lint test
 	@echo "Checks passed."
+

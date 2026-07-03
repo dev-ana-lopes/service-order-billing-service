@@ -1,8 +1,8 @@
-# Phase 3 Delivery Checklist
+﻿# Phase 3 Delivery Checklist
 
 ## Repositories
 
-- `service-order-api`
+- `service-order-billing-service`
 - `service-order-auth-lambda`
 - `service-order-infra-k8s`
 - `service-order-infra-db`
@@ -21,7 +21,7 @@
 
 ## Current Status
 
-- GitHub Actions for `service-order-api`: validates lint/tests, builds Docker,
+- GitHub Actions for `service-order-billing-service`: validates lint/tests, builds Docker,
   pushes GHCR image, renders manifests, deploys to k3s, runs migration, waits
   for rollout and runs smoke tests.
 - `service-order-auth-lambda`: owns the CPF authentication Lambda code,
@@ -75,3 +75,4 @@
 - Public `/metrics` validation completed if used as technical API evidence.
 - Datadog evidence captured.
 - OTLP traces remain disabled until Agent port `4318` is validated.
+

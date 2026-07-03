@@ -1,19 +1,19 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: service-order-api
+  name: service-order-billing-service
   namespace: service-order
   labels:
-    app: service-order-api
+    app: service-order-billing-service
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: service-order-api
+      app: service-order-billing-service
   template:
     metadata:
       labels:
-        app: service-order-api
+        app: service-order-billing-service
     spec:
       containers:
         - name: api
@@ -23,9 +23,9 @@ spec:
             - containerPort: 8000
           envFrom:
             - configMapRef:
-                name: service-order-api-config
+                name: service-order-billing-service-config
             - secretRef:
-                name: service-order-api-secret
+                name: service-order-billing-service-secret
           readinessProbe:
             httpGet:
               path: /health/ready
@@ -45,3 +45,4 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+

@@ -1,7 +1,7 @@
-apiVersion: networking.k8s.io/v1
+﻿apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: service-order-api
+  name: service-order-billing-service
   namespace: service-order
   annotations:
     kubernetes.io/ingress.class: traefik
@@ -13,6 +13,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: service-order-api
+                name: service-order-billing-service
                 port:
                   number: 80
+

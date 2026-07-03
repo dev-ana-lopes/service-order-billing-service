@@ -1,4 +1,4 @@
-# ADR-0005: Observabilidade
+﻿# ADR-0005: Observabilidade
 
 ## Status
 
@@ -8,7 +8,7 @@ Aceita.
 
 Usar Datadog como ferramenta principal de observabilidade da entrega atual.
 O Agent e instalado via Helm no namespace `datadog` e coleta logs de todos os
-containers. A `service-order-api` gera logs JSON com `correlation_id` e
+containers. A `service-order-billing-service` gera logs JSON com `correlation_id` e
 `request_id`.
 
 A entrega atual cobre logs, Kubernetes/container visibility,
@@ -26,3 +26,4 @@ HTTP `4318` no servico do Datadog Agent.
 - Evita falhas por endpoint OTLP nao validado.
 - Mantem `/metrics` como endpoint tecnico da API, sem dependencia de stack
   adicional para a entrega.
+

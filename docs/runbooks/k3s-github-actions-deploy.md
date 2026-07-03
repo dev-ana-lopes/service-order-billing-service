@@ -1,6 +1,6 @@
-# k3s Deployment Through GitHub Actions
+﻿# k3s Deployment Through GitHub Actions
 
-This runbook documents the current production/demo path for `service-order-api`.
+This runbook documents the current production/demo path for `service-order-billing-service`.
 
 ## Public URL
 
@@ -70,7 +70,7 @@ The workflow performs:
 From GitHub:
 
 1. Open the `Actions` tab.
-2. Select `ci-cd-service-order-api`.
+2. Select `ci-cd-service-order-billing-service`.
 3. Use `Run workflow` for manual execution, or re-run the failed job from the
    existing run.
 
@@ -85,7 +85,7 @@ gh workflow run ci-cd.yml --ref main
 ```bash
 kubectl get pods -n service-order
 kubectl get jobs -n service-order
-kubectl logs -n service-order deployment/service-order-api --tail=100
+kubectl logs -n service-order deployment/service-order-billing-service --tail=100
 kubectl get svc -n service-order
 kubectl get ingress -n service-order
 kubectl get hpa -n service-order
@@ -112,10 +112,11 @@ curl -i https://oubv5hamu5.execute-api.us-east-1.amazonaws.com/metrics
 ```bash
 kubectl get pods -n datadog
 kubectl get svc -n datadog
-kubectl logs -n service-order deployment/service-order-api --tail=100
+kubectl logs -n service-order deployment/service-order-billing-service --tail=100
 kubectl get hpa -n service-order
 ```
 
-In Datadog, confirm container logs for `service-order-api`, JSON fields
+In Datadog, confirm container logs for `service-order-billing-service`, JSON fields
 `correlation_id` and `request_id`, Kubernetes/container visibility, and
 Synthetic Monitoring checks for `/health` and `/health/ready`.
+

@@ -1,4 +1,4 @@
-# Solution Architecture
+﻿# Solution Architecture
 
 ## Plataforma local
 
@@ -39,7 +39,7 @@ flowchart TB
     end
 
     GHCR --> EC2
-    EC2 --> Pod["service-order-api pod(s)"]
+    EC2 --> Pod["service-order-billing-service pod(s)"]
     Pod --> RDS
 ```
 
@@ -72,3 +72,4 @@ flowchart LR
 - o HPA demonstra escalabilidade de pods, não de nós;
 - o RDS fora do cluster melhora clareza arquitetural para a banca;
 - GHCR evita adicionar um registry AWS extra na demonstração.
+

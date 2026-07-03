@@ -1,8 +1,8 @@
-services:
+﻿services:
   api:
-    image: service-order-api:dev
+    image: service-order-billing-service:dev
     build: .
-    container_name: service-order-api
+    container_name: service-order-billing-service
     command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "8000:8000"
@@ -11,7 +11,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://service_order_user:service_order_password@postgres:5432/service_order_db}
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      APP_NAME: ${APP_NAME:-service-order-api}
+      APP_NAME: ${APP_NAME:-service-order-billing-service}
       APP_VERSION: ${APP_VERSION:-2.1.0}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -95,3 +95,4 @@ volumes:
 networks:
   service-order-network:
     driver: bridge
+

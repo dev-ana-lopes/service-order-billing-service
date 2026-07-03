@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+﻿#!/usr/bin/env sh
 # ============================================================================
 # LEGACY/FALLBACK: Docker Compose Bootstrap
 # ============================================================================
@@ -16,7 +16,7 @@
 
 set -eu
 
-APP_DIR="${APP_DIR:-/opt/service-order-api}"
+APP_DIR="${APP_DIR:-/opt/service-order-billing-service}"
 DOCKER_COMPOSE_VERSION="${DOCKER_COMPOSE_VERSION:-v2.27.0}"
 
 if command -v dnf >/dev/null 2>&1; then
@@ -47,3 +47,4 @@ sudo chown -R "${SUDO_USER:-ec2-user}":"${SUDO_USER:-ec2-user}" "$APP_DIR"
 
 echo "[bootstrap] Docker and Docker Compose are ready."
 echo "[bootstrap] Reconnect your SSH session if group membership was updated."
+

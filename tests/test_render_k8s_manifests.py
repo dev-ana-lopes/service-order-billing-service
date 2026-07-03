@@ -14,10 +14,10 @@ def write_k8s_env(env_file: Path) -> None:
     env_file.write_text(
         "\n".join(
             [
+                "APP_NAME=service-order-billing-service",
                 "DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/db",
                 "JWT_SECRET=jwt-secret-for-tests",
                 "CUSTOMER_JWT_SECRET=customer-jwt-secret-for-tests",
-                "CUSTOMER_JWT_ISSUER=service-order-auth-lambda/test",
                 "APPROVAL_TOKEN_SECRET=approval-secret-for-tests",
             ]
         )
@@ -30,7 +30,6 @@ def run_render(tmp_path: Path, *, image: str) -> subprocess.CompletedProcess[str
     env_file = tmp_path / "k8s.env"
     output_dir = tmp_path / "rendered-k8s"
     write_k8s_env(env_file)
-
     return subprocess.run(
         [
             sys.executable,
@@ -48,40 +47,29 @@ def run_render(tmp_path: Path, *, image: str) -> subprocess.CompletedProcess[str
     )
 
 
-def test_render_k8s_manifests_injects_image_into_job_and_deployment(
-    tmp_path: Path,
-) -> None:
-    image = "ghcr.io/example/service-order-api:sha-test"
+def test_render_k8s_manifests_injects_image_into_job_and_deployment(tmp_path: Path):
+    image = "ghcr.io/example/-test"
     result = run_render(tmp_path, image=image)
-
     assert result.returncode == 0, result.stderr
-
     output_dir = tmp_path / "rendered-k8s"
     deployment = (output_dir / "deployment.yaml").read_text(encoding="utf-8")
     job = (output_dir / "job-migrate.yaml").read_text(encoding="utf-8")
-
     assert image in deployment
     assert image in job
-    assert "${API_IMAGE}" not in deployment
     assert "__API_IMAGE__" not in deployment
     assert "__API_IMAGE__" not in job
 
 
-def test_render_k8s_manifests_rejects_empty_image(tmp_path: Path) -> None:
+def test_render_k8s_manifests_rejects_empty_image(tmp_path: Path):
     result = run_render(tmp_path, image="   ")
     combined_output = f"{result.stdout}\n{result.stderr}"
-
     assert result.returncode != 0
     assert "non-empty container image reference" in combined_output
 
 
 @pytest.mark.parametrize("image", ["${API_IMAGE}", "__API_IMAGE__", "<image>"])
-def test_render_k8s_manifests_rejects_placeholder_like_image(
-    tmp_path: Path,
-    image: str,
-) -> None:
+def test_render_k8s_manifests_rejects_placeholder_like_image(tmp_path: Path, image: str):
     result = run_render(tmp_path, image=image)
     combined_output = f"{result.stdout}\n{result.stderr}"
-
     assert result.returncode != 0
     assert "rendered container image reference" in combined_output

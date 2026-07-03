@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -212,7 +212,7 @@ def main() -> int:
     write_manifest(
         output_dir / "configmap.rendered.yaml",
         kind="ConfigMap",
-        name="service-order-api-config",
+        name="service-order-billing-service-config",
         namespace=args.namespace,
         section_name="data",
         values=config_values,
@@ -220,7 +220,7 @@ def main() -> int:
     write_manifest(
         output_dir / "secret.rendered.yaml",
         kind="Secret",
-        name="service-order-api-secret",
+        name="service-order-billing-service-secret",
         namespace=args.namespace,
         section_name="stringData",
         values=secret_values,
@@ -232,3 +232,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

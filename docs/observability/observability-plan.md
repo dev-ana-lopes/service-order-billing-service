@@ -1,4 +1,4 @@
-# Observability Plan
+﻿# Observability Plan
 
 ## Phase 3 Scope
 
@@ -25,7 +25,7 @@ is:
 
 ## Required Evidence
 
-- Datadog Logs showing `service-order-api` container logs.
+- Datadog Logs showing `service-order-billing-service` container logs.
 - A JSON request log containing `correlation_id` and `request_id`.
 - Datadog Kubernetes/container visibility for the API pods.
 - Datadog Synthetic Monitoring checks for:
@@ -51,3 +51,4 @@ OTEL_ENABLED=false
 DD_TRACE_ENABLED=false
 OTEL_EXPORTER_OTLP_ENDPOINT=
 ```
+
