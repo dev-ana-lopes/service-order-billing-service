@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     OTEL_ENABLED: bool = False
     OTEL_SERVICE_NAME: str = "service-order-billing-service"
     OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
+    MERCADO_PAGO_ACCESS_TOKEN: str = ""
+    MERCADO_PAGO_ACCESS_TOKEN_FILE: str | None = None
+    MERCADO_PAGO_API_BASE_URL: str = "https://api.mercadopago.com"
+    MERCADO_PAGO_SUCCESS_URL: str = "http://localhost:8002/payments/success"
+    MERCADO_PAGO_FAILURE_URL: str = "http://localhost:8002/payments/failure"
+    MERCADO_PAGO_PENDING_URL: str = "http://localhost:8002/payments/pending"
 
     @field_validator("CORS_ALLOWED_ORIGINS", "TRUSTED_HOSTS", mode="before")
     @classmethod
@@ -89,6 +95,11 @@ class Settings(BaseSettings):
             self.CUSTOMER_JWT_SECRET,
             self.CUSTOMER_JWT_SECRET_FILE,
             "CUSTOMER_JWT_SECRET",
+        )
+        self.MERCADO_PAGO_ACCESS_TOKEN = resolve_secret(
+            self.MERCADO_PAGO_ACCESS_TOKEN,
+            self.MERCADO_PAGO_ACCESS_TOKEN_FILE,
+            "MERCADO_PAGO_ACCESS_TOKEN",
         )
         self.DD_SERVICE = self.APP_NAME
         self.DD_ENV = self.ENVIRONMENT

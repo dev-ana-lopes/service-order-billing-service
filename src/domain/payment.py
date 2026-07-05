@@ -1,5 +1,3 @@
-"""Payment and quote rules for Mercado Pago checkout orchestration."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -46,7 +44,7 @@ class PaymentGatewayPort(Protocol):
     def create_checkout_preference(
         self, quote_id: str, service_order_id: str, total: Money
     ) -> PaymentPreference:
-        """Create a payment preference without exposing gateway details to the domain."""
+        pass
 
 
 @dataclass(slots=True)
