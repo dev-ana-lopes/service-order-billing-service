@@ -1,5 +1,3 @@
-"""Use cases for quote and payment orchestration."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
