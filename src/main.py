@@ -15,7 +15,12 @@ from .infrastructure.repositories.in_memory_billing_repositories import (
     InMemoryPaymentRepository,
     InMemoryQuoteRepository,
 )
-from .presentation.api.routes import billing_router, health_router, metrics_router
+from .presentation.api.routes import (
+    billing_router,
+    event_router,
+    health_router,
+    metrics_router,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +91,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router)
     app.include_router(metrics_router)
     app.include_router(billing_router)
+    app.include_router(event_router)
     return app
 
 
