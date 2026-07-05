@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "service-order-billing-service"
     APP_VERSION: str = "0.1.0"
     ENVIRONMENT: Literal["development", "test", "staging", "production"] = "development"
+    APP_RUNTIME_MODE: Literal["memory", "real"] = "memory"
     LOG_LEVEL: str = "INFO"
     LOG_JSON: bool = False
     APP_BASE_URL: str = "http://localhost:8002"

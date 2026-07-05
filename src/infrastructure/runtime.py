@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+from src.infrastructure.config.settings import Settings
+from src.infrastructure.messaging.in_memory_event_publisher import InMemoryEventPublisher
+from src.infrastructure.messaging.rabbitmq_blocking_publisher import (
+    RabbitMqBlockingEventPublisher,
+)
+from src.infrastructure.payment.fake_payment_gateway import FakePaymentGateway
+from src.infrastructure.payment.mercado_pago_checkout_adapter import (
+    MercadoPagoCheckoutAdapter,
+    MercadoPagoCheckoutSettings,
+)
+from src.infrastructure.repositories.in_memory_billing_repositories import (
+    InMemoryPaymentRepository,
+    InMemoryQuoteRepository,
+)
+from src.infrastructure.repositories.sqlalchemy_billing_repositories import (
+    SqlAlchemyPaymentRepository,
+    SqlAlchemyQuoteRepository,
+)
+
+
+def build_quote_repository(settings: Settings):
+    if settings.APP_RUNTIME_MODE == "real":
+        return SqlAlchemyQuoteRepository(settings.DATABASE_URL)
+    return InMemoryQuoteRepository()
+
+
+def build_payment_repository(settings: Settings):
+    if settings.APP_RUNTIME_MODE == "real":
+        return SqlAlchemyPaymentRepository(settings.DATABASE_URL)
+    return InMemoryPaymentRepository()
+
+
+def build_event_publisher(settings: Settings):
+    if settings.APP_RUNTIME_MODE == "real":
+        return RabbitMqBlockingEventPublisher(
+            settings.RABBITMQ_URL,
+            settings.RABBITMQ_EXCHANGE,
+            settings.RABBITMQ_ROUTING_KEY,
+            settings.RABBITMQ_QUEUE,
+        )
+    return InMemoryEventPublisher()
+
+
+def build_payment_gateway(settings: Settings):
+    if settings.APP_RUNTIME_MODE == "real":
+        return MercadoPagoCheckoutAdapter(
+            MercadoPagoCheckoutSettings(
+                access_token=settings.MERCADO_PAGO_ACCESS_TOKEN,
+                api_base_url=settings.MERCADO_PAGO_API_BASE_URL,
+                success_url=settings.MERCADO_PAGO_SUCCESS_URL,
+                failure_url=settings.MERCADO_PAGO_FAILURE_URL,
+                pending_url=settings.MERCADO_PAGO_PENDING_URL,
+            )
+        )
+    return FakePaymentGateway()

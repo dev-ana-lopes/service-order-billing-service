@@ -5,6 +5,7 @@ metadata:
   namespace: service-order
 data:
   ENVIRONMENT: "production"
+  APP_RUNTIME_MODE: "real"
   APP_BASE_URL: "https://api.example.com/api"
   LOG_LEVEL: "INFO"
   LOG_JSON: "true"
