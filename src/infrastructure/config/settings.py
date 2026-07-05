@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     TRUSTED_HOSTS: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["*"])
     DATABASE_URL: str = "postgresql+asyncpg://user:pass@localhost:5432/service_order_db"
     MONGODB_URL: str = "mongodb://localhost:27017/service_order"
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/%2F"
+    RABBITMQ_EXCHANGE: str = "service-order.events"
+    RABBITMQ_ROUTING_KEY: str = "service-order.billing"
+    RABBITMQ_QUEUE: str = "service-order.billing.events"
     JWT_SECRET: str = "dev-jwt-secret-with-32-characters"
     JWT_SECRET_FILE: str | None = None
     CUSTOMER_JWT_SECRET: str = ""
