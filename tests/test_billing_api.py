@@ -50,6 +50,32 @@ async def test_billing_api_happy_path():
 
 
 @pytest.mark.asyncio
+async def test_mercado_pago_webhook_confirms_payment():
+    app = create_app(_settings())
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        quote_response = await client.post(
+            "/quotes",
+            json={
+                "service_order_id": "os-1",
+                "items": ["Brake pads"],
+                "amount": str(Decimal("120.00")),
+            },
+        )
+        quote_id = quote_response.json()["quote_id"]
+        approval_response = await client.post(f"/quotes/{quote_id}/approve")
+        payment_id = approval_response.json()["payment_id"]
+        webhook_response = await client.post(
+            "/payments/mercado-pago/webhook",
+            json={"payment_id": payment_id, "status": "approved"},
+        )
+
+    assert webhook_response.status_code == 200
+    assert webhook_response.json()["status"] == "CONFIRMED"
+
+
+@pytest.mark.asyncio
 async def test_billing_api_returns_not_found():
     app = create_app(_settings())
     transport = ASGITransport(app=app)

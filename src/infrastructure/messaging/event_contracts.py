@@ -5,6 +5,7 @@ from typing import Any
 from src.domain.events import DomainEvent
 
 INTEGRATION_EVENT_TYPES = {
+    "OS_OPENED",
     "QUOTE_CREATED",
     "QUOTE_APPROVED",
     "QUOTE_CANCELLED",
