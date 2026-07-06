@@ -28,6 +28,12 @@ class FailPaymentRequest(BaseModel):
     reason: str
 
 
+class MercadoPagoWebhookRequest(BaseModel):
+    payment_id: str
+    status: str
+    status_detail: str | None = None
+
+
 def quote_to_response(quote: Quote) -> dict[str, Any]:
     return {
         "quote_id": quote.quote_id,
@@ -149,6 +155,47 @@ def fail_payment(
             request.app.state.payment_repository,
             request.app.state.event_publisher,
         ).execute(payment_id, payload.reason)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    return payment_to_response(payment)
+
+
+@router.post("/payments/mercado-pago/webhook")
+def handle_mercado_pago_webhook(
+    payload: MercadoPagoWebhookRequest,
+    request: Request,
+) -> dict[str, Any]:
+    normalized_status = payload.status.strip().lower()
+    try:
+        if normalized_status in {"approved", "accredited"}:
+            payment = ConfirmPaymentUseCase(
+                request.app.state.payment_repository,
+                request.app.state.event_publisher,
+            ).execute(payload.payment_id)
+        elif normalized_status in {
+            "rejected",
+            "cancelled",
+            "refunded",
+            "charged_back",
+            "expired",
+        }:
+            payment = FailPaymentUseCase(
+                request.app.state.payment_repository,
+                request.app.state.event_publisher,
+            ).execute(
+                payload.payment_id,
+                payload.status_detail or f"Mercado Pago status: {payload.status}",
+            )
+        elif normalized_status in {"pending", "in_process"}:
+            payment = request.app.state.payment_repository.get(payload.payment_id)
+        else:
+            raise ValueError(f"Unsupported Mercado Pago status: {payload.status}")
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)

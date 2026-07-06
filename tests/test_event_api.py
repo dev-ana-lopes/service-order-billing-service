@@ -12,7 +12,7 @@ def test_event_contract_rejects_invalid_event_type():
         validate_event_message(
             {
                 "event_id": "event-1",
-                "event_type": "OS_OPENED",
+                "event_type": "UNKNOWN",
                 "correlation_id": "os-1",
                 "occurred_at": "2026-07-05T00:00:00Z",
                 "payload": {},

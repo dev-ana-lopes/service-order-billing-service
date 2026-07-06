@@ -25,6 +25,7 @@ Business rules stay away from HTTP clients, SDKs, queue clients, and framework d
 | `GET` | `/billing/payments/{payment_id}` | Read a payment. |
 | `POST` | `/billing/payments/{payment_id}/confirm` | Confirm payment and publish `PAYMENT_CONFIRMED`. |
 | `POST` | `/billing/payments/{payment_id}/fail` | Fail payment and publish `PAYMENT_FAILED`. |
+| `POST` | `/billing/payments/mercado-pago/webhook` | Map sandbox/demo Mercado Pago status to payment events. |
 | `GET` | `/events` | List published in-memory events for demo/test evidence. |
 | `POST` | `/events/drain` | Drain published in-memory events for demo/test evidence. |
 | `GET` | `/health` | Health check. |
@@ -74,14 +75,25 @@ Access tokens must be provided through environment variables or Kubernetes secre
 
 In `real` runtime mode, the app builds `MercadoPagoCheckoutAdapter` from environment variables and secret-backed settings.
 
+The demo webhook endpoint accepts a payment id and a Mercado Pago status. `approved` and `accredited` confirm the payment; rejected/cancelled/refunded/charged back/expired statuses fail it; pending statuses leave it pending.
+
 ## Messaging
 
 RabbitMQ integration is represented by thin infrastructure adapters:
 
 - `RabbitMqEventPublisher`
 - `RabbitMqEventConsumer`
+- `RabbitMqBlockingEventWorker`
 
 Automated tests use fake channels only. They do not connect to production queues. In `real` runtime mode, the app publishes events to RabbitMQ through `RabbitMqBlockingEventPublisher`.
+
+The worker process runs with:
+
+```bash
+python -m src.worker
+```
+
+It consumes `OS_OPENED`, creates a default quote for the demo flow, publishes `QUOTE_CREATED`, and stores processed `event_id` values before acknowledging messages.
 
 Environment variables:
 
@@ -89,10 +101,15 @@ Environment variables:
 - `RABBITMQ_EXCHANGE`
 - `RABBITMQ_ROUTING_KEY`
 - `RABBITMQ_QUEUE`
+- `RABBITMQ_CONSUME_ROUTING_KEYS`
+- `DEFAULT_QUOTE_ITEMS`
+- `DEFAULT_QUOTE_AMOUNT`
 
 ## Database
 
 The billing boundary has SQLAlchemy repositories for quotes and payments. `APP_RUNTIME_MODE=real` uses `DATABASE_URL`; `APP_RUNTIME_MODE=memory` keeps local in-memory repositories for tests.
+
+Processed integration events are stored in `processed_events` for idempotent worker consumption.
 
 ## Local Development
 
@@ -122,6 +139,8 @@ Result: `28 passed`, `89%` coverage.
 The GitHub Actions workflow validates lint, tests, coverage, SonarCloud, image build/push to GHCR, manifest rendering, and k3s deployment.
 
 Kubernetes manifests are under `k8s/`. Manifests must be rendered with an explicit GHCR image before applying to the cluster.
+
+The API deployment is `k8s/deployment.yaml`; the RabbitMQ worker deployment is `k8s/deployment-worker.yaml`.
 
 ## Cost Notes
 

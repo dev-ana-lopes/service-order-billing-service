@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -59,6 +60,9 @@ class Settings(BaseSettings):
     RABBITMQ_EXCHANGE: str = "service-order.events"
     RABBITMQ_ROUTING_KEY: str = "service-order.billing"
     RABBITMQ_QUEUE: str = "service-order.billing.events"
+    RABBITMQ_CONSUME_ROUTING_KEYS: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["service-order.os"]
+    )
     JWT_SECRET: str = "dev-jwt-secret-with-32-characters"
     JWT_SECRET_FILE: str | None = None
     CUSTOMER_JWT_SECRET: str = ""
@@ -79,8 +83,18 @@ class Settings(BaseSettings):
     MERCADO_PAGO_SUCCESS_URL: str = "http://localhost:8002/payments/success"
     MERCADO_PAGO_FAILURE_URL: str = "http://localhost:8002/payments/failure"
     MERCADO_PAGO_PENDING_URL: str = "http://localhost:8002/payments/pending"
+    DEFAULT_QUOTE_ITEMS: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["Initial workshop diagnosis"]
+    )
+    DEFAULT_QUOTE_AMOUNT: Decimal = Decimal("120.00")
 
-    @field_validator("CORS_ALLOWED_ORIGINS", "TRUSTED_HOSTS", mode="before")
+    @field_validator(
+        "CORS_ALLOWED_ORIGINS",
+        "TRUSTED_HOSTS",
+        "RABBITMQ_CONSUME_ROUTING_KEYS",
+        "DEFAULT_QUOTE_ITEMS",
+        mode="before",
+    )
     @classmethod
     def parse_list_settings(cls, value: str | list[str]) -> list[str]:
         return parse_csv_or_json_list(value)

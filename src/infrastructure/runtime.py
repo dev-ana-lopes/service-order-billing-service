@@ -5,6 +5,9 @@ from src.infrastructure.messaging.in_memory_event_publisher import InMemoryEvent
 from src.infrastructure.messaging.rabbitmq_blocking_publisher import (
     RabbitMqBlockingEventPublisher,
 )
+from src.infrastructure.messaging.rabbitmq_blocking_worker import (
+    RabbitMqBlockingEventWorker,
+)
 from src.infrastructure.payment.fake_payment_gateway import FakePaymentGateway
 from src.infrastructure.payment.mercado_pago_checkout_adapter import (
     MercadoPagoCheckoutAdapter,
@@ -13,6 +16,10 @@ from src.infrastructure.payment.mercado_pago_checkout_adapter import (
 from src.infrastructure.repositories.in_memory_billing_repositories import (
     InMemoryPaymentRepository,
     InMemoryQuoteRepository,
+)
+from src.infrastructure.repositories.processed_event_repositories import (
+    InMemoryProcessedEventRepository,
+    SqlAlchemyProcessedEventRepository,
 )
 from src.infrastructure.repositories.sqlalchemy_billing_repositories import (
     SqlAlchemyPaymentRepository,
@@ -55,3 +62,19 @@ def build_payment_gateway(settings: Settings):
             )
         )
     return FakePaymentGateway()
+
+
+def build_processed_event_repository(settings: Settings):
+    if settings.APP_RUNTIME_MODE == "real":
+        return SqlAlchemyProcessedEventRepository(settings.DATABASE_URL)
+    return InMemoryProcessedEventRepository()
+
+
+def build_event_worker(settings: Settings, handler):
+    return RabbitMqBlockingEventWorker(
+        settings.RABBITMQ_URL,
+        settings.RABBITMQ_EXCHANGE,
+        settings.RABBITMQ_QUEUE,
+        settings.RABBITMQ_CONSUME_ROUTING_KEYS,
+        handler,
+    )

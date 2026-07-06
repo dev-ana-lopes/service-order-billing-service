@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-order-billing-service-worker
+  namespace: service-order
+  labels:
+    app: service-order-billing-service-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-order-billing-service-worker
+  template:
+    metadata:
+      labels:
+        app: service-order-billing-service-worker
+    spec:
+      containers:
+        - name: worker
+          image: __API_IMAGE__
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "src.worker"]
+          envFrom:
+            - configMapRef:
+                name: service-order-billing-service-config
+            - secretRef:
+                name: service-order-billing-service-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi

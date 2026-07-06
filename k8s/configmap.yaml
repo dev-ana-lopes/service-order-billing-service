@@ -31,4 +31,10 @@ data:
   DD_TRACE_ENABLED: "false"
   HEALTHCHECK_TIMEOUT_SECONDS: "5"
   MIGRATE_ON_STARTUP: "false"
+  RABBITMQ_EXCHANGE: "service-order.events"
+  RABBITMQ_ROUTING_KEY: "service-order.billing"
+  RABBITMQ_QUEUE: "service-order.billing.events"
+  RABBITMQ_CONSUME_ROUTING_KEYS: "service-order.os"
+  DEFAULT_QUOTE_ITEMS: "Initial workshop diagnosis"
+  DEFAULT_QUOTE_AMOUNT: "120.00"
 

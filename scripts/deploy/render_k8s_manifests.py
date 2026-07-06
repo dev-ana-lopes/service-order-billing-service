@@ -34,11 +34,12 @@ STATIC_MANIFESTS = (
     "namespace.yaml",
     "job-migrate.yaml",
     "deployment.yaml",
+    "deployment-worker.yaml",
     "service.yaml",
     "hpa.yaml",
     "ingress.yaml",
 )
-IMAGE_MANIFESTS = ("job-migrate.yaml", "deployment.yaml")
+IMAGE_MANIFESTS = ("job-migrate.yaml", "deployment.yaml", "deployment-worker.yaml")
 IMAGE_PLACEHOLDER = "__API_IMAGE__"
 LEGACY_IMAGE_PLACEHOLDER = "${API_IMAGE}"
 IMAGE_PLACEHOLDER_PATTERNS = (

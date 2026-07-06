@@ -181,6 +181,7 @@ jobs:
           kubectl wait --for=condition=complete job/service-order-billing-service-migrate -n service-order --timeout=300s
 
           kubectl apply -f /home/ec2-user/.rendered-k8s/deployment.yaml
+          kubectl apply -f /home/ec2-user/.rendered-k8s/deployment-worker.yaml
           kubectl apply -f /home/ec2-user/.rendered-k8s/service.yaml
           kubectl apply -f /home/ec2-user/.rendered-k8s/hpa.yaml
 
@@ -199,6 +200,7 @@ jobs:
           fi
 
           kubectl rollout status deployment/service-order-billing-service -n service-order --timeout=300s
+          kubectl rollout status deployment/service-order-billing-service-worker -n service-order --timeout=300s
           kubectl get pods -n service-order
           kubectl get svc -n service-order
           kubectl get ingress -n service-order || true
