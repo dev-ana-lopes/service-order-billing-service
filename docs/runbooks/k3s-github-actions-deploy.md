@@ -34,7 +34,9 @@ http://32.197.10.136/{proxy}
 Production `APP_ENV` should include:
 
 ```dotenv
-DATABASE_URL=postgresql+asyncpg://user:password@host:5432/service_order_db?ssl=require
+DATABASE_URL=postgresql+asyncpg://billing_service_user:password@host:5432/billing_service_db?ssl=require
+EXPECTED_DATABASE_NAME=billing_service_db
+EXPECTED_DATABASE_USERNAME=billing_service_user
 CORS_ALLOWED_ORIGINS=http://32.197.10.136
 TRUSTED_HOSTS=*
 OTEL_ENABLED=false

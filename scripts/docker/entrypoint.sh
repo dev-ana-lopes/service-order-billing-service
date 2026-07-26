@@ -12,15 +12,25 @@ from src.infrastructure.database.url_utils import validate_runtime_database_url
 
 
 database_url = os.environ.get("DATABASE_URL", "").strip()
+expected_database = os.environ.get(
+    "EXPECTED_DATABASE_NAME", "billing_service_db"
+).strip()
+expected_username = os.environ.get(
+    "EXPECTED_DATABASE_USERNAME", "billing_service_user"
+).strip()
 
 try:
-    host, port, database = validate_runtime_database_url(database_url)
+    host, port, database, username = validate_runtime_database_url(
+        database_url,
+        expected_database=expected_database,
+        expected_username=expected_username,
+    )
 except ValueError as exc:
     print(f"[entrypoint] {exc}", flush=True)
     sys.exit(1)
 
 print(
-    f"[entrypoint] Database target host={host} port={port} db={database}",
+    f"[entrypoint] Database target host={host} port={port} db={database} user={username}",
     flush=True,
 )
 

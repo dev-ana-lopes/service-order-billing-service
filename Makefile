@@ -60,17 +60,17 @@ migrate-down:
 	uv run alembic -c alembic/alembic.ini downgrade -1
 
 run:
-	uv run uvicorn src.main:app --host 0.0.0.0 --port 8000
+	uv run uvicorn src.main:app --host 0.0.0.0 --port 8002
 
 run-dev:
-	uv run uvicorn src.main:app --reload
+	uv run uvicorn src.main:app --host 0.0.0.0 --port 8002 --reload
 
 compose-up:
 	docker compose --env-file .env up -d --build
 
 compose-smoke:
-	curl -fsS http://localhost:8000/health >/dev/null
-	curl -fsS http://localhost:8000/health/ready >/dev/null
+	curl -fsS http://localhost:8002/health >/dev/null
+	curl -fsS http://localhost:8002/health/ready >/dev/null
 	@echo "Compose smoke test passed"
 
 compose-down:
@@ -80,7 +80,7 @@ compose-logs:
 	docker compose logs -f api
 
 compose-db-shell:
-	docker compose exec postgres psql -U service_order_user -d service_order_db
+	docker compose exec postgres psql -U billing_service_user -d billing_service_db
 
 compose-prod-up:
 	docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
@@ -98,8 +98,8 @@ build-docker:
 	docker build -t service-order-billing-service:local .
 
 docker-run:
-	docker run -p 8000:8000 \
-		-e DATABASE_URL="postgresql+asyncpg://user:password@host:5432/service_order_db" \
+	docker run -p 8002:8000 \
+		-e DATABASE_URL="postgresql+asyncpg://billing_service_user:password@host:5432/billing_service_db" \
 		service-order-billing-service:local
 
 check: lint test

@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from src.application.use_cases import (
@@ -13,7 +13,9 @@ from src.application.use_cases import (
     CreateQuoteUseCase,
     FailPaymentUseCase,
 )
-from src.domain.payment import Payment, Quote
+from src.domain.auth import AuthenticatedPrincipal
+from src.domain.payment import Payment, PaymentGatewayError, Quote
+from src.presentation.dependencies.auth import require_admin_principal
 
 router = APIRouter(tags=["billing"])
 
@@ -63,7 +65,12 @@ def payment_to_response(payment: Payment) -> dict[str, Any]:
 
 
 @router.post("/quotes", status_code=status.HTTP_201_CREATED)
-def create_quote(payload: CreateQuoteRequest, request: Request) -> dict[str, Any]:
+def create_quote(
+    payload: CreateQuoteRequest,
+    request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+) -> dict[str, Any]:
+    del principal
     use_case = CreateQuoteUseCase(
         request.app.state.quote_repository,
         request.app.state.event_publisher,
@@ -84,7 +91,12 @@ def create_quote(payload: CreateQuoteRequest, request: Request) -> dict[str, Any
 
 
 @router.get("/quotes/{quote_id}")
-def get_quote(quote_id: str, request: Request) -> dict[str, Any]:
+def get_quote(
+    quote_id: str,
+    request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+) -> dict[str, Any]:
+    del principal
     try:
         quote = request.app.state.quote_repository.get(quote_id)
     except KeyError as exc:
@@ -95,7 +107,12 @@ def get_quote(quote_id: str, request: Request) -> dict[str, Any]:
 
 
 @router.post("/quotes/{quote_id}/approve")
-def approve_quote(quote_id: str, request: Request) -> dict[str, Any]:
+def approve_quote(
+    quote_id: str,
+    request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+) -> dict[str, Any]:
+    del principal
     use_case = ApproveQuoteUseCase(
         request.app.state.quote_repository,
         request.app.state.payment_repository,
@@ -108,6 +125,11 @@ def approve_quote(quote_id: str, request: Request) -> dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+    except PaymentGatewayError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
@@ -116,7 +138,12 @@ def approve_quote(quote_id: str, request: Request) -> dict[str, Any]:
 
 
 @router.get("/payments/{payment_id}")
-def get_payment(payment_id: str, request: Request) -> dict[str, Any]:
+def get_payment(
+    payment_id: str,
+    request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+) -> dict[str, Any]:
+    del principal
     try:
         payment = request.app.state.payment_repository.get(payment_id)
     except KeyError as exc:
@@ -127,7 +154,12 @@ def get_payment(payment_id: str, request: Request) -> dict[str, Any]:
 
 
 @router.post("/payments/{payment_id}/confirm")
-def confirm_payment(payment_id: str, request: Request) -> dict[str, Any]:
+def confirm_payment(
+    payment_id: str,
+    request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+) -> dict[str, Any]:
+    del principal
     try:
         payment = ConfirmPaymentUseCase(
             request.app.state.payment_repository,
@@ -149,7 +181,9 @@ def fail_payment(
     payment_id: str,
     payload: FailPaymentRequest,
     request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
 ) -> dict[str, Any]:
+    del principal
     try:
         payment = FailPaymentUseCase(
             request.app.state.payment_repository,

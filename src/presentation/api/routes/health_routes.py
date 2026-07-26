@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 from ....infrastructure.config.settings import Settings
 
@@ -33,8 +34,24 @@ async def live_check(request: Request) -> dict:
 @router.get("/health/ready")
 async def readiness_check(request: Request) -> dict:
     settings = get_app_settings(request)
+    probe = getattr(request.app.state, "database_readiness_probe", None)
+    if probe is None:
+        checks = {"application": "ok"}
+    else:
+        try:
+            checks = probe.check()
+        except Exception as exc:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "degraded",
+                    "service": settings.APP_NAME,
+                    "checks": {"application": "ok", "database": "error"},
+                    "detail": str(exc),
+                },
+            )
     return {
         "status": "ok",
         "service": settings.APP_NAME,
-        "checks": {"application": "ok"},
+        "checks": checks,
     }

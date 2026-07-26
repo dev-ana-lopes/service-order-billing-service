@@ -4,8 +4,9 @@ import json
 from dataclasses import dataclass
 from typing import Any, Protocol
 from urllib import request
+from urllib.error import HTTPError, URLError
 
-from src.domain.payment import Money, PaymentPreference
+from src.domain.payment import Money, PaymentGatewayError, PaymentPreference
 
 
 class HttpJsonClientPort(Protocol):
@@ -26,8 +27,28 @@ class UrllibHttpJsonClient:
             headers=headers,
             method="POST",
         )
-        with request.urlopen(http_request, timeout=10) as response:
-            return json.loads(response.read().decode("utf-8"))
+        try:
+            with request.urlopen(http_request, timeout=10) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            response_body = exc.read().decode("utf-8", errors="replace").strip()
+            detail = f"Mercado Pago request failed with status {exc.code}"
+            if exc.code in {401, 403}:
+                detail = (
+                    f"{detail}. Check whether MERCADO_PAGO_ACCESS_TOKEN is valid "
+                    "for the configured Mercado Pago environment."
+                )
+            if response_body:
+                detail = f"{detail} Response: {response_body[:300]}"
+            raise PaymentGatewayError(
+                detail,
+                status_code=exc.code,
+                response_body=response_body,
+            ) from exc
+        except URLError as exc:
+            raise PaymentGatewayError(
+                "Mercado Pago request could not reach the payment gateway."
+            ) from exc
 
 
 @dataclass(frozen=True, slots=True)

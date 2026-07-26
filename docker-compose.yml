@@ -1,23 +1,24 @@
-﻿services:
-  api:
+services:
+  migrate:
     image: service-order-billing-service:dev
     build: .
-    container_name: service-order-billing-service
-    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-    ports:
-      - "8000:8000"
+    container_name: service-order-billing-migrate
+    restart: "no"
     env_file:
       - ${APP_ENV_FILE:-.env}
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://service_order_user:service_order_password@postgres:5432/service_order_db}
+    environment: &app_environment
+      APP_RUNTIME_MODE: real
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://billing_service_user:billing_service_password@postgres:5432/billing_service_db}
+      EXPECTED_DATABASE_NAME: ${EXPECTED_DATABASE_NAME:-billing_service_db}
+      EXPECTED_DATABASE_USERNAME: ${EXPECTED_DATABASE_USERNAME:-billing_service_user}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       APP_NAME: ${APP_NAME:-service-order-billing-service}
       APP_VERSION: ${APP_VERSION:-2.1.0}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8000}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8002}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_JSON: ${LOG_JSON:-false}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-SMTP}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8002}
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:-*}
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
@@ -35,17 +36,56 @@
       JWT_SECRET_FILE: ${JWT_SECRET_FILE:-}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
+      CUSTOMER_JWT_SECRET: ${CUSTOMER_JWT_SECRET:-customer-dev-secret-with-at-least-32-char}
+      CUSTOMER_JWT_SECRET_FILE: ${CUSTOMER_JWT_SECRET_FILE:-}
+      CUSTOMER_JWT_ALGORITHM: ${CUSTOMER_JWT_ALGORITHM:-HS256}
+      CUSTOMER_JWT_ISSUER: ${CUSTOMER_JWT_ISSUER:-service-order-auth-lambda/development}
       HEALTHCHECK_TIMEOUT_SECONDS: ${HEALTHCHECK_TIMEOUT_SECONDS:-5}
-      MIGRATE_ON_STARTUP: ${MIGRATE_ON_STARTUP:-true}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/%2F}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-service-order.events}
+      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:-service-order.billing}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-service-order.billing.events}
+      RABBITMQ_CONSUME_ROUTING_KEYS: ${RABBITMQ_CONSUME_ROUTING_KEYS:-service-order.os}
+      MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN:-local-demo-token}
+      MERCADO_PAGO_ACCESS_TOKEN_FILE: ${MERCADO_PAGO_ACCESS_TOKEN_FILE:-}
+      MERCADO_PAGO_API_BASE_URL: ${MERCADO_PAGO_API_BASE_URL:-http://mercado-pago-mock:8080}
+      MERCADO_PAGO_SUCCESS_URL: ${MERCADO_PAGO_SUCCESS_URL:-http://localhost:8002/payments/success}
+      MERCADO_PAGO_FAILURE_URL: ${MERCADO_PAGO_FAILURE_URL:-http://localhost:8002/payments/failure}
+      MERCADO_PAGO_PENDING_URL: ${MERCADO_PAGO_PENDING_URL:-http://localhost:8002/payments/pending}
+      DEFAULT_QUOTE_ITEMS: ${DEFAULT_QUOTE_ITEMS:-Initial workshop diagnosis}
+      DEFAULT_QUOTE_AMOUNT: ${DEFAULT_QUOTE_AMOUNT:-120.00}
+      MIGRATE_ON_STARTUP: "false"
       MIGRATE_MAX_ATTEMPTS: ${MIGRATE_MAX_ATTEMPTS:-30}
       MIGRATE_RETRY_SLEEP_SECONDS: ${MIGRATE_RETRY_SLEEP_SECONDS:-2}
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - service-order-billing-network
+    command: ["alembic", "-c", "alembic/alembic.ini", "upgrade", "head"]
+
+  api:
+    image: service-order-billing-service:dev
+    build: .
+    container_name: service-order-billing-service
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    ports:
+      - "8002:8000"
+    env_file:
+      - ${APP_ENV_FILE:-.env}
+    environment:
+      <<: *app_environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
       mailhog:
         condition: service_healthy
+      mercado-pago-mock:
+        condition: service_healthy
     networks:
-      - service-order-network
+      - service-order-billing-network
     volumes:
       - .:/app
     healthcheck:
@@ -55,33 +95,72 @@
       retries: 3
       start_period: 40s
 
+  worker:
+    image: service-order-billing-service:dev
+    build: .
+    container_name: service-order-billing-worker
+    command: ["python", "-m", "src.worker"]
+    env_file:
+      - ${APP_ENV_FILE:-.env}
+    environment:
+      <<: *app_environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      mercado-pago-mock:
+        condition: service_healthy
+    networks:
+      - service-order-billing-network
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
   postgres:
     image: postgres:16-alpine
-    container_name: service-order-postgres
+    container_name: service-order-billing-postgres
     environment:
-      POSTGRES_DB: service_order_db
-      POSTGRES_USER: service_order_user
-      POSTGRES_PASSWORD: service_order_password
+      POSTGRES_DB: billing_service_db
+      POSTGRES_USER: billing_service_user
+      POSTGRES_PASSWORD: billing_service_password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
-      - service-order-network
+      - service-order-billing-network
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - service_order_billing_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U service_order_user -d service_order_db"]
+      test: ["CMD-SHELL", "pg_isready -U billing_service_user -d billing_service_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: service-order-billing-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    networks:
+      - service-order-billing-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
   mailhog:
     image: mailhog/mailhog:v1.0.1
-    container_name: service-order-mailhog
+    container_name: service-order-billing-mailhog
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "1026:1025"
+      - "8026:8025"
     networks:
-      - service-order-network
+      - service-order-billing-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025"]
       interval: 30s
@@ -89,10 +168,23 @@
       retries: 3
       start_period: 10s
 
+  mercado-pago-mock:
+    image: service-order-billing-service:dev
+    build: .
+    container_name: service-order-billing-mercado-pago-mock
+    entrypoint: ["python", "scripts/local/mercado_pago_mock.py"]
+    networks:
+      - service-order-billing-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8080/health').read()"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 5s
+
 volumes:
-  postgres_data:
+  service_order_billing_postgres_data:
 
 networks:
-  service-order-network:
+  service-order-billing-network:
     driver: bridge
-

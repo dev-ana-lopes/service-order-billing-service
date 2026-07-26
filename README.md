@@ -4,7 +4,7 @@ FastAPI microservice responsible for quotes, approvals, payment preference creat
 
 ## Responsibility
 
-This service owns quote and payment rules. It integrates with Mercado Pago through an infrastructure adapter and does not read OS or Execution databases.
+This service owns quote and payment rules. It integrates with Mercado Pago through an infrastructure adapter, does not read OS or Execution databases, and must run against its own PostgreSQL database/user pair.
 
 ## Architecture
 
@@ -72,6 +72,7 @@ Required environment variables:
 - `MERCADO_PAGO_PENDING_URL`
 
 Access tokens must be provided through environment variables or Kubernetes secrets. They must never be committed or logged.
+When `APP_RUNTIME_MODE=real` and `MERCADO_PAGO_API_BASE_URL=https://api.mercadopago.com`, use a valid Mercado Pago sandbox or production access token for that exact environment. The local `local-demo-token` only works with the checked-in mock.
 
 In `real` runtime mode, the app builds `MercadoPagoCheckoutAdapter` from environment variables and secret-backed settings.
 
@@ -109,7 +110,16 @@ Environment variables:
 
 The billing boundary has SQLAlchemy repositories for quotes and payments. `APP_RUNTIME_MODE=real` uses `DATABASE_URL`; `APP_RUNTIME_MODE=memory` keeps local in-memory repositories for tests.
 
+The default Billing service ownership contract is:
+
+- database: `billing_service_db`
+- user: `billing_service_user`
+
+`/health/ready` validates both connectivity and ownership by checking the connected database name and user against `EXPECTED_DATABASE_NAME` and `EXPECTED_DATABASE_USERNAME`.
+
 Processed integration events are stored in `processed_events` for idempotent worker consumption.
+
+Alembic migrations live under `alembic/` and remain the canonical schema management path for explicit migration jobs. Repository adapters still call `metadata.create_all` as a defensive bootstrap for local and test flows.
 
 ## Local Development
 
@@ -120,6 +130,33 @@ make test
 make test-cov
 make run-dev
 ```
+
+The local API defaults to `http://localhost:8002` and Swagger to `http://localhost:8002/docs`.
+
+## Local Docker Stack
+
+The default `docker compose up --build` stack includes:
+
+- `migrate`
+- `api`
+- `worker`
+- `postgres`
+- `rabbitmq`
+- `mailhog`
+- `mercado-pago-mock`
+
+Useful local URLs:
+
+- API: `http://localhost:8002`
+- Swagger: `http://localhost:8002/docs`
+- RabbitMQ management: `http://localhost:15673`
+- MailHog: `http://localhost:8026`
+
+Notes:
+
+- `docker compose up` forces `APP_RUNTIME_MODE=real`, even if `.env` still says `memory`.
+- The local stack uses a checked-in Mercado Pago mock so quote approval works without a live sandbox token.
+- Database migrations run through the dedicated `migrate` service before the API and worker start.
 
 ## Validation Evidence
 

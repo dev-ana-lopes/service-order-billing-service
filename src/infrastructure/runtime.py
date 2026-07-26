@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from src.infrastructure.config.settings import Settings
+from src.infrastructure.database.readiness import DatabaseReadinessProbe
+from src.infrastructure.database.url_utils import validate_runtime_database_url
 from src.infrastructure.messaging.in_memory_event_publisher import InMemoryEventPublisher
 from src.infrastructure.messaging.rabbitmq_blocking_publisher import (
     RabbitMqBlockingEventPublisher,
@@ -31,6 +33,23 @@ def build_quote_repository(settings: Settings):
     if settings.APP_RUNTIME_MODE == "real":
         return SqlAlchemyQuoteRepository(settings.DATABASE_URL)
     return InMemoryQuoteRepository()
+
+
+def build_database_readiness_probe(settings: Settings):
+    if settings.APP_RUNTIME_MODE != "real":
+        return None
+
+    validate_runtime_database_url(
+        settings.DATABASE_URL,
+        expected_database=settings.EXPECTED_DATABASE_NAME,
+        expected_username=settings.EXPECTED_DATABASE_USERNAME,
+    )
+    return DatabaseReadinessProbe(
+        settings.DATABASE_URL,
+        expected_database=settings.EXPECTED_DATABASE_NAME,
+        expected_username=settings.EXPECTED_DATABASE_USERNAME,
+        timeout_seconds=settings.HEALTHCHECK_TIMEOUT_SECONDS,
+    )
 
 
 def build_payment_repository(settings: Settings):

@@ -7,7 +7,7 @@ flowchart TB
     Dev["Desenvolvedor / Banca"] --> Compose["docker compose"]
 
     subgraph Local["Ambiente local"]
-        Compose --> API["API FastAPI<br/>localhost:8000"]
+        Compose --> API["API FastAPI<br/>localhost:8002"]
         Compose --> DB["PostgreSQL<br/>localhost:5432"]
         Compose --> MailHog["MailHog<br/>localhost:8025 / localhost:1025"]
     end

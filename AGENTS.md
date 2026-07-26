@@ -36,7 +36,7 @@ Escopo: toda a árvore do projeto.
 - Parar stack local: `make compose-down`
 - Logs da API local: `make compose-logs`
 - Rodar API sem Docker (dev): `make run-dev`
-- Health endpoints esperados: `http://localhost:8000/health` e `http://localhost:8000/health/ready`
+- Health endpoints esperados: `http://localhost:8002/health` e `http://localhost:8002/health/ready`
 
 ## 5) Qualidade e testes
 

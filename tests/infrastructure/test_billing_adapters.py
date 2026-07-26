@@ -1,5 +1,7 @@
 from decimal import Decimal
+from io import BytesIO
 from typing import Any
+from urllib.error import HTTPError
 
 import pytest
 
@@ -9,7 +11,7 @@ from src.application.use_cases import (
     CreateQuoteUseCase,
 )
 from src.domain.events import DomainEvent
-from src.domain.payment import Money, PaymentStatus
+from src.domain.payment import Money, PaymentGatewayError, PaymentStatus
 from src.infrastructure.messaging.in_memory_event_publisher import InMemoryEventPublisher
 from src.infrastructure.payment.fake_payment_gateway import FakePaymentGateway
 from src.infrastructure.payment.mercado_pago_checkout_adapter import (
@@ -107,6 +109,32 @@ def test_mercado_pago_adapter_requires_access_token_and_checkout_url() -> None:
     )
     with pytest.raises(ValueError, match="checkout URL"):
         adapter.create_checkout_preference("quote-1", "os-1", Money(Decimal("120.00")))
+
+
+def test_urllib_http_json_client_translates_http_error(monkeypatch) -> None:
+    def _raise_http_error(*args, **kwargs):
+        del args, kwargs
+        raise HTTPError(
+            url="https://api.mercadopago.com/checkout/preferences",
+            code=403,
+            msg="Forbidden",
+            hdrs=None,
+            fp=BytesIO(b'{"message":"invalid access token"}'),
+        )
+
+    monkeypatch.setattr(
+        "src.infrastructure.payment.mercado_pago_checkout_adapter.request.urlopen",
+        _raise_http_error,
+    )
+
+    adapter = MercadoPagoCheckoutAdapter(_settings())
+
+    with pytest.raises(PaymentGatewayError, match="MERCADO_PAGO_ACCESS_TOKEN"):
+        adapter.create_checkout_preference(
+            "quote-1",
+            "os-1",
+            Money(Decimal("120.00")),
+        )
 
 
 def _settings(access_token: str = "test-token") -> MercadoPagoCheckoutSettings:

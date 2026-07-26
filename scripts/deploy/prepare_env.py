@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+from src.infrastructure.database.url_utils import validate_runtime_database_url
+
 REQUIRED_BOOLEAN_FIELDS = ("LOG_JSON",)
 OPTIONAL_BOOLEAN_DEFAULTS = {
     "SMTP_USE_TLS": "false",
@@ -130,6 +132,18 @@ def validate_database_url(values: dict[str, str]) -> None:
         raise EnvValidationError(
             "DATABASE_URL must start with postgresql:// or postgresql+asyncpg://."
         )
+    try:
+        validate_runtime_database_url(
+            database_url,
+            expected_database=values.get(
+                "EXPECTED_DATABASE_NAME", "billing_service_db"
+            ),
+            expected_username=values.get(
+                "EXPECTED_DATABASE_USERNAME", "billing_service_user"
+            ),
+        )
+    except ValueError as exc:
+        raise EnvValidationError(str(exc)) from exc
 
 
 def validate_app_base_url(values: dict[str, str]) -> None:

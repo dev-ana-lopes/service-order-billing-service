@@ -11,12 +11,14 @@ from .infrastructure.config.settings import Settings, get_settings
 from .infrastructure.logging import configure_logging
 from .infrastructure.observability.metrics import REQUEST_COUNTER, REQUEST_DURATION
 from .infrastructure.runtime import (
+    build_database_readiness_probe,
     build_event_publisher,
     build_payment_gateway,
     build_payment_repository,
     build_quote_repository,
 )
 from .presentation.api.routes import (
+    auth_router,
     billing_router,
     event_router,
     health_router,
@@ -36,6 +38,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         close = getattr(app.state.event_publisher, "close", None)
         if close is not None:
             close()
+        close_probe = getattr(app.state.database_readiness_probe, "close", None)
+        if close_probe is not None:
+            close_probe()
 
     app = FastAPI(
         title="Service Order Billing Service",
@@ -44,6 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.database_readiness_probe = build_database_readiness_probe(settings)
     app.state.quote_repository = build_quote_repository(settings)
     app.state.payment_repository = build_payment_repository(settings)
     app.state.event_publisher = build_event_publisher(settings)
@@ -96,6 +102,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(metrics_router)
+    app.include_router(auth_router)
     app.include_router(billing_router)
     app.include_router(event_router)
     return app

@@ -35,6 +35,11 @@ def resolve_secret(raw_value: str, file_path: str | None, field_name: str) -> st
     return content
 
 
+def uses_real_mercado_pago_api(api_base_url: str) -> bool:
+    normalized_url = api_base_url.strip().lower().rstrip("/")
+    return normalized_url == "https://api.mercadopago.com"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file_encoding="utf-8",
@@ -54,8 +59,9 @@ class Settings(BaseSettings):
     )
     CORS_ALLOW_CREDENTIALS: bool = True
     TRUSTED_HOSTS: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["*"])
-    DATABASE_URL: str = "postgresql+asyncpg://user:pass@localhost:5432/service_order_db"
-    MONGODB_URL: str = "mongodb://localhost:27017/service_order"
+    DATABASE_URL: str = "postgresql+asyncpg://billing_service_user:billing_service_password@localhost:5432/billing_service_db"
+    EXPECTED_DATABASE_NAME: str = "billing_service_db"
+    EXPECTED_DATABASE_USERNAME: str = "billing_service_user"
     RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/%2F"
     RABBITMQ_EXCHANGE: str = "service-order.events"
     RABBITMQ_ROUTING_KEY: str = "service-order.billing"
@@ -65,8 +71,11 @@ class Settings(BaseSettings):
     )
     JWT_SECRET: str = "dev-jwt-secret-with-32-characters"
     JWT_SECRET_FILE: str | None = None
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ISSUER: str = ""
     CUSTOMER_JWT_SECRET: str = ""
     CUSTOMER_JWT_SECRET_FILE: str | None = None
+    CUSTOMER_JWT_ALGORITHM: str = "HS256"
     CUSTOMER_JWT_ISSUER: str = "service-order-auth-lambda/development"
     HEALTHCHECK_TIMEOUT_SECONDS: int = 5
     DD_SERVICE: str = "service-order-billing-service"
@@ -120,6 +129,18 @@ class Settings(BaseSettings):
             self.MERCADO_PAGO_ACCESS_TOKEN_FILE,
             "MERCADO_PAGO_ACCESS_TOKEN",
         )
+        if (
+            self.APP_RUNTIME_MODE == "real"
+            and uses_real_mercado_pago_api(self.MERCADO_PAGO_API_BASE_URL)
+            and self.MERCADO_PAGO_ACCESS_TOKEN == "local-demo-token"
+        ):
+            raise ValueError(
+                "MERCADO_PAGO_ACCESS_TOKEN must be set to a valid Mercado Pago "
+                "sandbox or production token when MERCADO_PAGO_API_BASE_URL "
+                "points to the real API."
+            )
+        if not self.JWT_ISSUER:
+            self.JWT_ISSUER = f"service-order-os-service/{self.ENVIRONMENT}"
         self.DD_SERVICE = self.APP_NAME
         self.DD_ENV = self.ENVIRONMENT
         self.DD_VERSION = self.APP_VERSION

@@ -111,9 +111,9 @@ Causas comuns:
 
 kubectl get endpoints -n service-order -o wide
 
-kubectl port-forward -n service-order svc/service-order-billing-service 8000:80
+kubectl port-forward -n service-order svc/service-order-billing-service 8002:80
 
-curl http://localhost:8000/health
+curl http://localhost:8002/health
 ```
 
 ### Health check falhando

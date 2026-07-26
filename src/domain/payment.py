@@ -40,6 +40,19 @@ class PaymentPreference:
     checkout_url: str
 
 
+class PaymentGatewayError(Exception):
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        response_body: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.response_body = response_body
+
+
 class PaymentGatewayPort(Protocol):
     def create_checkout_preference(
         self, quote_id: str, service_order_id: str, total: Money
