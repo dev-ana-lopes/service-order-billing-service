@@ -27,7 +27,9 @@ class DatabaseReadinessProbe:
             current_database = str(
                 connection.execute(text("SELECT current_database()")).scalar_one()
             )
-            current_user = str(connection.execute(text("SELECT current_user")).scalar_one())
+            current_user = str(
+                connection.execute(text("SELECT current_user")).scalar_one()
+            )
 
         if current_database != self._expected_database:
             raise RuntimeError(

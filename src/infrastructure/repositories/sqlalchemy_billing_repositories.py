@@ -145,6 +145,7 @@ class SqlAlchemyPaymentRepository:
             preference = {
                 "preference_id": payment.preference.preference_id,
                 "checkout_url": payment.preference.checkout_url,
+                "external_reference": payment.preference.external_reference,
             }
         values = {
             "payment_id": payment.payment_id,
@@ -184,6 +185,21 @@ class SqlAlchemyPaymentRepository:
             raise KeyError(f"Payment not found: {payment_id}")
         return self._from_row(dict(row))
 
+    def get_by_service_order_id(self, service_order_id: str) -> Payment:
+        with self._session_factory() as session:
+            row = (
+                session.execute(
+                    select(payments).where(
+                        payments.c.service_order_id == service_order_id
+                    )
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            raise KeyError(f"Payment not found for service order: {service_order_id}")
+        return self._from_row(dict(row))
+
     def _from_row(self, row: dict[str, Any]) -> Payment:
         preference = row["preference"]
         if isinstance(preference, str):
@@ -199,5 +215,6 @@ class SqlAlchemyPaymentRepository:
             else PaymentPreference(
                 preference_id=str(preference["preference_id"]),
                 checkout_url=str(preference["checkout_url"]),
+                external_reference=preference.get("external_reference"),
             ),
         )

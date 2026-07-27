@@ -19,13 +19,16 @@ Business rules stay away from HTTP clients, SDKs, queue clients, and framework d
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/billing/quotes` | Create a quote and publish `QUOTE_CREATED`. |
-| `GET` | `/billing/quotes/{quote_id}` | Read a quote. |
-| `POST` | `/billing/quotes/{quote_id}/approve` | Approve quote, create payment, and create checkout preference. |
-| `GET` | `/billing/payments/{payment_id}` | Read a payment. |
-| `POST` | `/billing/payments/{payment_id}/confirm` | Confirm payment and publish `PAYMENT_CONFIRMED`. |
-| `POST` | `/billing/payments/{payment_id}/fail` | Fail payment and publish `PAYMENT_FAILED`. |
-| `POST` | `/billing/payments/mercado-pago/webhook` | Map sandbox/demo Mercado Pago status to payment events. |
+| `POST` | `/quotes` | Create a quote and publish `QUOTE_CREATED`. |
+| `GET` | `/quotes/{quote_id}` | Read a quote. |
+| `GET` | `/quotes/by-service-order/{service_order_id}` | Read the quote generated for a service order. |
+| `POST` | `/quotes/{quote_id}/approve` | Approve quote, create payment, and create checkout preference. |
+| `GET` | `/payments/{payment_id}` | Read a payment. |
+| `GET` | `/payments/by-service-order/{service_order_id}` | Read the payment generated for a service order. |
+| `POST` | `/payments/{payment_id}/sync` | Query Mercado Pago and reconcile the payment status without a webhook. |
+| `POST` | `/payments/{payment_id}/confirm` | Confirm payment and publish `PAYMENT_CONFIRMED`. |
+| `POST` | `/payments/{payment_id}/fail` | Fail payment and publish `PAYMENT_FAILED`. |
+| `POST` | `/internal/test/payments/{payment_id}/simulate` | Simulate approved/pending/rejected/failure transitions when internal test endpoints are enabled. |
 | `GET` | `/events` | List published in-memory events for demo/test evidence. |
 | `POST` | `/events/drain` | Drain published in-memory events for demo/test evidence. |
 | `GET` | `/health` | Health check. |
@@ -50,10 +53,15 @@ The event envelope is JSON with `event_id`, `event_type`, `correlation_id`, `occ
 
 ## Runtime Mode
 
-`APP_RUNTIME_MODE` controls infrastructure adapters:
+`APP_RUNTIME_MODE` controls persistence and messaging adapters:
 
-- `memory`: uses in-memory repositories, in-memory publisher, and fake payment gateway.
-- `real`: uses SQLAlchemy repositories, RabbitMQ publisher, and Mercado Pago Checkout Pro adapter.
+- `memory`: uses in-memory repositories and in-memory publisher.
+- `real`: uses SQLAlchemy repositories and RabbitMQ publisher.
+
+`PAYMENT_PROVIDER_MODE` controls the payment provider adapter:
+
+- `mock`: keeps the deterministic fake gateway and is the default for local deterministic flows.
+- `mercado_pago`: enables the Mercado Pago Checkout Pro adapter and on-demand payment reconciliation.
 
 ## Mercado Pago
 
@@ -70,13 +78,15 @@ Required environment variables:
 - `MERCADO_PAGO_SUCCESS_URL`
 - `MERCADO_PAGO_FAILURE_URL`
 - `MERCADO_PAGO_PENDING_URL`
+- `MERCADO_PAGO_REQUEST_TIMEOUT_SECONDS`
+- `ENABLE_INTERNAL_TEST_ENDPOINTS`
 
 Access tokens must be provided through environment variables or Kubernetes secrets. They must never be committed or logged.
-When `APP_RUNTIME_MODE=real` and `MERCADO_PAGO_API_BASE_URL=https://api.mercadopago.com`, use a valid Mercado Pago sandbox or production access token for that exact environment. The local `local-demo-token` only works with the checked-in mock.
+When `PAYMENT_PROVIDER_MODE=mercado_pago` and `MERCADO_PAGO_API_BASE_URL=https://api.mercadopago.com`, use a valid Mercado Pago sandbox or production access token for that exact environment. The local `local-demo-token` only works with the checked-in mock.
 
-In `real` runtime mode, the app builds `MercadoPagoCheckoutAdapter` from environment variables and secret-backed settings.
+In Mercado Pago mode, the adapter uses `X-Idempotency-Key` for preference creation and returns the hosted checkout URL. Use `POST /payments/{payment_id}/sync` to query `GET /v1/payments/search` by `external_reference`; the adapter validates the payment reference, amount, currency and uniqueness before publishing a transition. This integration does not use a webhook. `POST /payments/{payment_id}/confirm` and `/fail` remain restricted operational/test controls.
 
-The demo webhook endpoint accepts a payment id and a Mercado Pago status. `approved` and `accredited` confirm the payment; rejected/cancelled/refunded/charged back/expired statuses fail it; pending statuses leave it pending.
+For local-only flows, keep `PAYMENT_PROVIDER_MODE=mock` and enable `ENABLE_INTERNAL_TEST_ENDPOINTS=true` to use `POST /internal/test/payments/{payment_id}/simulate`.
 
 ## Messaging
 
@@ -141,7 +151,6 @@ The default `docker compose up --build` stack includes:
 - `api`
 - `worker`
 - `postgres`
-- `rabbitmq`
 - `mailhog`
 - `mercado-pago-mock`
 
@@ -149,12 +158,13 @@ Useful local URLs:
 
 - API: `http://localhost:8002`
 - Swagger: `http://localhost:8002/docs`
-- RabbitMQ management: `http://localhost:15673`
+- RabbitMQ management: `http://localhost:15672`
 - MailHog: `http://localhost:8026`
 
 Notes:
 
 - `docker compose up` forces `APP_RUNTIME_MODE=real`, even if `.env` still says `memory`.
+- The local Docker stack expects the shared RabbitMQ broker to already be running on `amqp://guest:guest@localhost:5672/%2F`, typically from `service-order-os-service`.
 - The local stack uses a checked-in Mercado Pago mock so quote approval works without a live sandbox token.
 - Database migrations run through the dedicated `migrate` service before the API and worker start.
 

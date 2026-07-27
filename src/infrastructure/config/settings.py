@@ -59,7 +59,10 @@ class Settings(BaseSettings):
     )
     CORS_ALLOW_CREDENTIALS: bool = True
     TRUSTED_HOSTS: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["*"])
-    DATABASE_URL: str = "postgresql+asyncpg://billing_service_user:billing_service_password@localhost:5432/billing_service_db"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://billing_service_user:billing_service_password@localhost:"
+        "5432/billing_service_db"
+    )
     EXPECTED_DATABASE_NAME: str = "billing_service_db"
     EXPECTED_DATABASE_USERNAME: str = "billing_service_user"
     RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/%2F"
@@ -86,12 +89,15 @@ class Settings(BaseSettings):
     OTEL_ENABLED: bool = False
     OTEL_SERVICE_NAME: str = "service-order-billing-service"
     OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
+    PAYMENT_PROVIDER_MODE: Literal["mock", "mercado_pago"] | None = None
     MERCADO_PAGO_ACCESS_TOKEN: str = ""
     MERCADO_PAGO_ACCESS_TOKEN_FILE: str | None = None
     MERCADO_PAGO_API_BASE_URL: str = "https://api.mercadopago.com"
     MERCADO_PAGO_SUCCESS_URL: str = "http://localhost:8002/payments/success"
     MERCADO_PAGO_FAILURE_URL: str = "http://localhost:8002/payments/failure"
     MERCADO_PAGO_PENDING_URL: str = "http://localhost:8002/payments/pending"
+    MERCADO_PAGO_REQUEST_TIMEOUT_SECONDS: int = 10
+    ENABLE_INTERNAL_TEST_ENDPOINTS: bool = False
     DEFAULT_QUOTE_ITEMS: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["Initial workshop diagnosis"]
     )
@@ -129,8 +135,18 @@ class Settings(BaseSettings):
             self.MERCADO_PAGO_ACCESS_TOKEN_FILE,
             "MERCADO_PAGO_ACCESS_TOKEN",
         )
+        if self.PAYMENT_PROVIDER_MODE is None:
+            self.PAYMENT_PROVIDER_MODE = (
+                "mercado_pago"
+                if (
+                    self.APP_RUNTIME_MODE == "real"
+                    and uses_real_mercado_pago_api(self.MERCADO_PAGO_API_BASE_URL)
+                    and self.MERCADO_PAGO_ACCESS_TOKEN not in {"", "local-demo-token"}
+                )
+                else "mock"
+            )
         if (
-            self.APP_RUNTIME_MODE == "real"
+            self.PAYMENT_PROVIDER_MODE == "mercado_pago"
             and uses_real_mercado_pago_api(self.MERCADO_PAGO_API_BASE_URL)
             and self.MERCADO_PAGO_ACCESS_TOKEN == "local-demo-token"
         ):

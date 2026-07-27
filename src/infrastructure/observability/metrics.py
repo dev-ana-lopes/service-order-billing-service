@@ -14,6 +14,11 @@ REQUEST_DURATION = Histogram(
     ["method", "path"],
     buckets=(5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000),
 )
+PAYMENT_TRANSITION_COUNTER = Counter(
+    "billing_payment_transitions_total",
+    "Total payment state transitions triggered by Billing.",
+    ["result"],
+)
 
 
 def metrics_response() -> Response:

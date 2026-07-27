@@ -24,6 +24,9 @@ class PaymentRepositoryPort(Protocol):
     def get(self, payment_id: str) -> Payment:
         ...
 
+    def get_by_service_order_id(self, service_order_id: str) -> Payment:
+        ...
+
 
 class EventPublisherPort(Protocol):
     def publish(self, event: DomainEvent) -> None:

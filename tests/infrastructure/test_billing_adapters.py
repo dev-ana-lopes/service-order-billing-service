@@ -11,7 +11,13 @@ from src.application.use_cases import (
     CreateQuoteUseCase,
 )
 from src.domain.events import DomainEvent
-from src.domain.payment import Money, PaymentGatewayError, PaymentStatus
+from src.domain.payment import (
+    Money,
+    Payment,
+    PaymentGatewayError,
+    PaymentPreference,
+    PaymentStatus,
+)
 from src.infrastructure.messaging.in_memory_event_publisher import InMemoryEventPublisher
 from src.infrastructure.payment.fake_payment_gateway import FakePaymentGateway
 from src.infrastructure.payment.mercado_pago_checkout_adapter import (
@@ -33,6 +39,10 @@ class FakeHttpJsonClient:
         self, url: str, headers: dict[str, str], payload: dict[str, Any]
     ) -> dict[str, Any]:
         self.requests.append({"url": url, "headers": headers, "payload": payload})
+        return self.response
+
+    def get_json(self, url: str, headers: dict[str, str]) -> dict[str, Any]:
+        self.requests.append({"url": url, "headers": headers})
         return self.response
 
 
@@ -95,9 +105,11 @@ def test_mercado_pago_adapter_creates_checkout_preference_payload() -> None:
     assert preference.checkout_url == "https://sandbox.mercadopago.test/pref-1"
     assert request["url"] == "https://api.mercadopago.com/checkout/preferences"
     assert request["headers"]["Authorization"] == "Bearer test-token"
+    assert "X-Idempotency-Key" in request["headers"]
     assert request["payload"]["external_reference"] == "os-1"
     assert request["payload"]["items"][0]["currency_id"] == "BRL"
     assert request["payload"]["back_urls"]["success"] == "https://app.test/success"
+    assert "notification_url" not in request["payload"]
 
 
 def test_mercado_pago_adapter_requires_access_token_and_checkout_url() -> None:
@@ -109,6 +121,76 @@ def test_mercado_pago_adapter_requires_access_token_and_checkout_url() -> None:
     )
     with pytest.raises(ValueError, match="checkout URL"):
         adapter.create_checkout_preference("quote-1", "os-1", Money(Decimal("120.00")))
+
+
+def test_mercado_pago_adapter_reads_one_matching_payment() -> None:
+    http_client = FakeHttpJsonClient(
+        {
+            "results": [
+                {
+                    "id": "mp-payment-1",
+                    "external_reference": "os-1",
+                    "status": "approved",
+                    "status_detail": "accredited",
+                    "transaction_amount": 120.0,
+                    "currency_id": "BRL",
+                }
+            ]
+        }
+    )
+    adapter = MercadoPagoCheckoutAdapter(_settings(), http_client=http_client)
+    payment = Payment(
+        quote_id="quote-1",
+        service_order_id="os-1",
+        total=Money(Decimal("120.00")),
+        preference=PaymentPreference(
+            preference_id="pref-1",
+            checkout_url="https://checkout.test/pref-1",
+            external_reference="os-1",
+        ),
+        status=PaymentStatus.PENDING,
+    )
+
+    result = adapter.get_payment_status(payment)
+
+    assert result.provider_payment_id == "mp-payment-1"
+    assert result.status == "approved"
+    assert result.status_detail == "accredited"
+    assert "/v1/payments/search?" in http_client.requests[0]["url"]
+
+
+def test_mercado_pago_adapter_rejects_ambiguous_payment_search() -> None:
+    http_client = FakeHttpJsonClient(
+        {
+            "results": [
+                {
+                    "id": "mp-payment-1",
+                    "external_reference": "os-1",
+                    "status": "pending",
+                    "transaction_amount": 120.0,
+                    "currency_id": "BRL",
+                },
+                {
+                    "id": "mp-payment-2",
+                    "external_reference": "os-1",
+                    "status": "approved",
+                    "transaction_amount": 120.0,
+                    "currency_id": "BRL",
+                },
+            ]
+        }
+    )
+    adapter = MercadoPagoCheckoutAdapter(_settings(), http_client=http_client)
+    payment = Payment(
+        quote_id="quote-1",
+        service_order_id="os-1",
+        total=Money(Decimal("120.00")),
+        preference=PaymentPreference("pref-1", "https://checkout.test/pref-1", "os-1"),
+        status=PaymentStatus.PENDING,
+    )
+
+    with pytest.raises(PaymentGatewayError, match="More than one"):
+        adapter.get_payment_status(payment)
 
 
 def test_urllib_http_json_client_translates_http_error(monkeypatch) -> None:

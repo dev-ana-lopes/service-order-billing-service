@@ -38,6 +38,14 @@ class Money:
 class PaymentPreference:
     preference_id: str
     checkout_url: str
+    external_reference: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PaymentProviderStatus:
+    provider_payment_id: str
+    status: str
+    status_detail: str | None = None
 
 
 class PaymentGatewayError(Exception):
@@ -57,6 +65,9 @@ class PaymentGatewayPort(Protocol):
     def create_checkout_preference(
         self, quote_id: str, service_order_id: str, total: Money
     ) -> PaymentPreference:
+        pass
+
+    def get_payment_status(self, payment: "Payment") -> PaymentProviderStatus:
         pass
 
 

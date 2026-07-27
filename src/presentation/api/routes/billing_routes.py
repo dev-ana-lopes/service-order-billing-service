@@ -7,14 +7,18 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from src.application.use_cases import (
+    ApplyPaymentStatusCommand,
+    ApplyPaymentStatusUseCase,
     ApproveQuoteUseCase,
     ConfirmPaymentUseCase,
     CreateQuoteCommand,
     CreateQuoteUseCase,
     FailPaymentUseCase,
+    SyncPaymentStatusUseCase,
 )
 from src.domain.auth import AuthenticatedPrincipal
 from src.domain.payment import Payment, PaymentGatewayError, Quote
+from src.infrastructure.observability.metrics import PAYMENT_TRANSITION_COUNTER
 from src.presentation.dependencies.auth import require_admin_principal
 
 router = APIRouter(tags=["billing"])
@@ -30,8 +34,7 @@ class FailPaymentRequest(BaseModel):
     reason: str
 
 
-class MercadoPagoWebhookRequest(BaseModel):
-    payment_id: str
+class SimulatePaymentRequest(BaseModel):
     status: str
     status_detail: str | None = None
 
@@ -60,6 +63,7 @@ def payment_to_response(payment: Payment) -> dict[str, Any]:
         else {
             "preference_id": payment.preference.preference_id,
             "checkout_url": payment.preference.checkout_url,
+            "external_reference": payment.preference.external_reference,
         },
     }
 
@@ -99,6 +103,24 @@ def get_quote(
     del principal
     try:
         quote = request.app.state.quote_repository.get(quote_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    return quote_to_response(quote)
+
+
+@router.get("/quotes/by-service-order/{service_order_id}")
+def get_quote_by_service_order(
+    service_order_id: str,
+    request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+) -> dict[str, Any]:
+    del principal
+    try:
+        quote = request.app.state.quote_repository.get_by_service_order_id(
+            service_order_id
+        )
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
@@ -153,6 +175,24 @@ def get_payment(
     return payment_to_response(payment)
 
 
+@router.get("/payments/by-service-order/{service_order_id}")
+def get_payment_by_service_order(
+    service_order_id: str,
+    request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+) -> dict[str, Any]:
+    del principal
+    try:
+        payment = request.app.state.payment_repository.get_by_service_order_id(
+            service_order_id
+        )
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    return payment_to_response(payment)
+
+
 @router.post("/payments/{payment_id}/confirm")
 def confirm_payment(
     payment_id: str,
@@ -173,6 +213,7 @@ def confirm_payment(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
+    PAYMENT_TRANSITION_COUNTER.labels(result="confirmed").inc()
     return payment_to_response(payment)
 
 
@@ -197,39 +238,74 @@ def fail_payment(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
+    PAYMENT_TRANSITION_COUNTER.labels(result="failed").inc()
     return payment_to_response(payment)
 
 
-@router.post("/payments/mercado-pago/webhook")
-def handle_mercado_pago_webhook(
-    payload: MercadoPagoWebhookRequest,
+@router.post("/payments/{payment_id}/sync")
+def sync_payment_status(
+    payment_id: str,
     request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
 ) -> dict[str, Any]:
-    normalized_status = payload.status.strip().lower()
+    del principal
     try:
-        if normalized_status in {"approved", "accredited"}:
-            payment = ConfirmPaymentUseCase(
-                request.app.state.payment_repository,
-                request.app.state.event_publisher,
-            ).execute(payload.payment_id)
-        elif normalized_status in {
-            "rejected",
-            "cancelled",
-            "refunded",
-            "charged_back",
-            "expired",
-        }:
-            payment = FailPaymentUseCase(
-                request.app.state.payment_repository,
-                request.app.state.event_publisher,
-            ).execute(
-                payload.payment_id,
-                payload.status_detail or f"Mercado Pago status: {payload.status}",
-            )
-        elif normalized_status in {"pending", "in_process"}:
-            payment = request.app.state.payment_repository.get(payload.payment_id)
-        else:
-            raise ValueError(f"Unsupported Mercado Pago status: {payload.status}")
+        result = SyncPaymentStatusUseCase(
+            request.app.state.payment_repository,
+            request.app.state.event_publisher,
+            request.app.state.payment_gateway,
+        ).execute(payment_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except PaymentGatewayError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+    if result.action == "confirmed":
+        PAYMENT_TRANSITION_COUNTER.labels(result="confirmed").inc()
+    elif result.action == "failed":
+        PAYMENT_TRANSITION_COUNTER.labels(result="failed").inc()
+    response = payment_to_response(result.payment)
+    response.update(
+        {
+            "provider_payment_id": result.provider_payment_id,
+            "provider_status": result.provider_status,
+            "provider_status_detail": result.provider_status_detail,
+            "action": result.action,
+            "published_event_type": result.published_event_type,
+        }
+    )
+    return response
+
+
+@router.post("/internal/test/payments/{payment_id}/simulate")
+def simulate_payment_update(
+    payment_id: str,
+    payload: SimulatePaymentRequest,
+    request: Request,
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+) -> dict[str, Any]:
+    del principal
+    if not request.app.state.settings.ENABLE_INTERNAL_TEST_ENDPOINTS:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Internal test endpoints are disabled.",
+        )
+    try:
+        result = _apply_payment_status(
+            request,
+            payment_id=payment_id,
+            provider_status=payload.status,
+            provider_status_detail=payload.status_detail,
+        )
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
@@ -238,4 +314,32 @@ def handle_mercado_pago_webhook(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
-    return payment_to_response(payment)
+    if result["action"] == "confirmed":
+        PAYMENT_TRANSITION_COUNTER.labels(result="confirmed").inc()
+    elif result["action"] == "failed":
+        PAYMENT_TRANSITION_COUNTER.labels(result="failed").inc()
+    return result
+
+
+def _apply_payment_status(
+    request: Request,
+    *,
+    payment_id: str,
+    provider_status: str,
+    provider_status_detail: str | None,
+) -> dict[str, Any]:
+    result = ApplyPaymentStatusUseCase(
+        request.app.state.payment_repository,
+        request.app.state.event_publisher,
+    ).execute(
+        ApplyPaymentStatusCommand(
+            payment_id=payment_id,
+            provider_status=provider_status,
+            provider_status_detail=provider_status_detail,
+        )
+    )
+    response = payment_to_response(result.payment)
+    response.update(
+        {"action": result.action, "published_event_type": result.published_event_type}
+    )
+    return response

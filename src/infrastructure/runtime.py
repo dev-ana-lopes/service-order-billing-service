@@ -70,7 +70,7 @@ def build_event_publisher(settings: Settings):
 
 
 def build_payment_gateway(settings: Settings):
-    if settings.APP_RUNTIME_MODE == "real":
+    if settings.PAYMENT_PROVIDER_MODE == "mercado_pago":
         return MercadoPagoCheckoutAdapter(
             MercadoPagoCheckoutSettings(
                 access_token=settings.MERCADO_PAGO_ACCESS_TOKEN,
@@ -78,6 +78,7 @@ def build_payment_gateway(settings: Settings):
                 success_url=settings.MERCADO_PAGO_SUCCESS_URL,
                 failure_url=settings.MERCADO_PAGO_FAILURE_URL,
                 pending_url=settings.MERCADO_PAGO_PENDING_URL,
+                timeout_seconds=settings.MERCADO_PAGO_REQUEST_TIMEOUT_SECONDS,
             )
         )
     return FakePaymentGateway()

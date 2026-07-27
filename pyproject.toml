@@ -57,9 +57,6 @@ line_length = 89
 testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
-    "e2e: end-to-end API and email workflow tests",
-    "integration: tests that exercise external integrations",
-    "mailhog: local end-to-end tests against MailHog and a running stack",
     "testmail: live tests that query the Testmail API",
 ]
 

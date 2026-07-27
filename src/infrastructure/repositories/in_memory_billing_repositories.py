@@ -35,3 +35,9 @@ class InMemoryPaymentRepository:
             return self._items[payment_id]
         except KeyError as exc:
             raise KeyError(f"Payment not found: {payment_id}") from exc
+
+    def get_by_service_order_id(self, service_order_id: str) -> Payment:
+        for payment in self._items.values():
+            if payment.service_order_id == service_order_id:
+                return payment
+        raise KeyError(f"Payment not found for service order: {service_order_id}")

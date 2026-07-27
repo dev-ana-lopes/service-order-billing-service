@@ -43,7 +43,6 @@ Escopo: toda a árvore do projeto.
 - Lint/format check: `make lint`
 - Testes rápidos: `make test`
 - Cobertura: `make test-cov`
-- Integração com PostgreSQL real: `make test-integration`
 - Migrações locais: `make migrate`
 
 ## 6) Docker e Compose
@@ -124,7 +123,7 @@ Escopo: toda a árvore do projeto.
 - Sem segredo real em arquivo versionado.
 - `make lint` executado.
 - `make test` executado.
-- Se aplicável, `make test-cov` e/ou `make test-integration` executados.
+- Se aplicável, `make test-cov` executado.
 - Migrações testadas quando houver alteração de schema.
 - Documentação atualizada quando comportamento/processo mudou.
 
@@ -137,7 +136,6 @@ Escopo: toda a árvore do projeto.
 ## 18) Gaps (necessário criar)
 
 - `make compose-smoke` citado no README, mas sem target no `Makefile` atual.
-- `make test-mailhog-e2e` citado no README, mas sem target no `Makefile` atual.
 - API Gateway como componente dedicado não está automatizado neste repositório.
 - Lambda/serverless não está implementado como fluxo operacional no estado atual.
 - Observabilidade avançada (ex.: stack completa de métricas/tracing centralizados) não está fechada como automação de projeto.
