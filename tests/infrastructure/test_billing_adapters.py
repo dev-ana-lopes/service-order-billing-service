@@ -1,7 +1,5 @@
 from decimal import Decimal
-from io import BytesIO
 from typing import Any
-from urllib.error import HTTPError
 
 import pytest
 
@@ -24,25 +22,32 @@ from src.infrastructure.payment.mercado_pago_checkout_adapter import (
     MercadoPagoCheckoutAdapter,
     MercadoPagoCheckoutSettings,
 )
+from src.infrastructure.payment.mercado_pago_sdk_client import MercadoPagoSdkClient
 from src.infrastructure.repositories.in_memory_billing_repositories import (
     InMemoryPaymentRepository,
     InMemoryQuoteRepository,
 )
 
 
-class FakeHttpJsonClient:
+class FakeMercadoPagoSdkClient:
     def __init__(self, response: dict[str, Any]) -> None:
         self.response = response
         self.requests: list[dict[str, Any]] = []
 
-    def post_json(
-        self, url: str, headers: dict[str, str], payload: dict[str, Any]
+    def create_preference(
+        self, payload: dict[str, Any], idempotency_key: str
     ) -> dict[str, Any]:
-        self.requests.append({"url": url, "headers": headers, "payload": payload})
+        self.requests.append(
+            {
+                "operation": "create_preference",
+                "payload": payload,
+                "idempotency_key": idempotency_key,
+            }
+        )
         return self.response
 
-    def get_json(self, url: str, headers: dict[str, str]) -> dict[str, Any]:
-        self.requests.append({"url": url, "headers": headers})
+    def search_payments(self, filters: dict[str, str]) -> dict[str, Any]:
+        self.requests.append({"operation": "search_payments", "filters": filters})
         return self.response
 
 
@@ -89,10 +94,10 @@ def test_in_memory_publisher_keeps_event_order() -> None:
 
 
 def test_mercado_pago_adapter_creates_checkout_preference_payload() -> None:
-    http_client = FakeHttpJsonClient(
+    sdk_client = FakeMercadoPagoSdkClient(
         {"id": "pref-1", "sandbox_init_point": "https://sandbox.mercadopago.test/pref-1"}
     )
-    adapter = MercadoPagoCheckoutAdapter(_settings(), http_client=http_client)
+    adapter = MercadoPagoCheckoutAdapter(_settings(), sdk_client=sdk_client)
 
     preference = adapter.create_checkout_preference(
         quote_id="quote-1",
@@ -100,12 +105,11 @@ def test_mercado_pago_adapter_creates_checkout_preference_payload() -> None:
         total=Money(Decimal("120.00")),
     )
 
-    request = http_client.requests[0]
+    request = sdk_client.requests[0]
     assert preference.preference_id == "pref-1"
     assert preference.checkout_url == "https://sandbox.mercadopago.test/pref-1"
-    assert request["url"] == "https://api.mercadopago.com/checkout/preferences"
-    assert request["headers"]["Authorization"] == "Bearer test-token"
-    assert "X-Idempotency-Key" in request["headers"]
+    assert request["operation"] == "create_preference"
+    assert request["idempotency_key"]
     assert request["payload"]["external_reference"] == "os-1"
     assert request["payload"]["items"][0]["currency_id"] == "BRL"
     assert request["payload"]["back_urls"]["success"] == "https://app.test/success"
@@ -117,14 +121,14 @@ def test_mercado_pago_adapter_requires_access_token_and_checkout_url() -> None:
         MercadoPagoCheckoutAdapter(_settings(access_token=""))
 
     adapter = MercadoPagoCheckoutAdapter(
-        _settings(), http_client=FakeHttpJsonClient({"id": "pref-1"})
+        _settings(), sdk_client=FakeMercadoPagoSdkClient({"id": "pref-1"})
     )
     with pytest.raises(ValueError, match="checkout URL"):
         adapter.create_checkout_preference("quote-1", "os-1", Money(Decimal("120.00")))
 
 
 def test_mercado_pago_adapter_reads_one_matching_payment() -> None:
-    http_client = FakeHttpJsonClient(
+    sdk_client = FakeMercadoPagoSdkClient(
         {
             "results": [
                 {
@@ -138,7 +142,7 @@ def test_mercado_pago_adapter_reads_one_matching_payment() -> None:
             ]
         }
     )
-    adapter = MercadoPagoCheckoutAdapter(_settings(), http_client=http_client)
+    adapter = MercadoPagoCheckoutAdapter(_settings(), sdk_client=sdk_client)
     payment = Payment(
         quote_id="quote-1",
         service_order_id="os-1",
@@ -156,11 +160,12 @@ def test_mercado_pago_adapter_reads_one_matching_payment() -> None:
     assert result.provider_payment_id == "mp-payment-1"
     assert result.status == "approved"
     assert result.status_detail == "accredited"
-    assert "/v1/payments/search?" in http_client.requests[0]["url"]
+    assert sdk_client.requests[0]["operation"] == "search_payments"
+    assert sdk_client.requests[0]["filters"]["external_reference"] == "os-1"
 
 
 def test_mercado_pago_adapter_rejects_ambiguous_payment_search() -> None:
-    http_client = FakeHttpJsonClient(
+    sdk_client = FakeMercadoPagoSdkClient(
         {
             "results": [
                 {
@@ -180,7 +185,7 @@ def test_mercado_pago_adapter_rejects_ambiguous_payment_search() -> None:
             ]
         }
     )
-    adapter = MercadoPagoCheckoutAdapter(_settings(), http_client=http_client)
+    adapter = MercadoPagoCheckoutAdapter(_settings(), sdk_client=sdk_client)
     payment = Payment(
         quote_id="quote-1",
         service_order_id="os-1",
@@ -193,36 +198,56 @@ def test_mercado_pago_adapter_rejects_ambiguous_payment_search() -> None:
         adapter.get_payment_status(payment)
 
 
-def test_urllib_http_json_client_translates_http_error(monkeypatch) -> None:
-    def _raise_http_error(*args, **kwargs):
-        del args, kwargs
-        raise HTTPError(
-            url="https://api.mercadopago.com/checkout/preferences",
-            code=403,
-            msg="Forbidden",
-            hdrs=None,
-            fp=BytesIO(b'{"message":"invalid access token"}'),
-        )
+def test_sdk_client_translates_provider_error(monkeypatch) -> None:
+    class FailingPreference:
+        def create(self, payload, options):
+            del payload, options
+            raise RuntimeError("provider rejected request")
+
+    class FailingSdk:
+        def preference(self):
+            return FailingPreference()
 
     monkeypatch.setattr(
-        "src.infrastructure.payment.mercado_pago_checkout_adapter.request.urlopen",
-        _raise_http_error,
+        "src.infrastructure.payment.mercado_pago_sdk_client.mercadopago.SDK",
+        lambda access_token: FailingSdk(),
     )
+    client = MercadoPagoSdkClient("test-token")
 
-    adapter = MercadoPagoCheckoutAdapter(_settings())
+    with pytest.raises(PaymentGatewayError, match="status 502"):
+        client.create_preference({}, "idempotency-key")
 
-    with pytest.raises(PaymentGatewayError, match="MERCADO_PAGO_ACCESS_TOKEN"):
-        adapter.create_checkout_preference(
-            "quote-1",
-            "os-1",
-            Money(Decimal("120.00")),
-        )
+
+def test_sdk_client_sanitizes_authorization_errors(monkeypatch) -> None:
+    class UnauthorizedError(Exception):
+        status_code = 403
+
+    class FailingPreference:
+        def create(self, payload, options):
+            del payload, options
+            raise UnauthorizedError("token=secret-token")
+
+    class FailingSdk:
+        def preference(self):
+            return FailingPreference()
+
+    monkeypatch.setattr(
+        "src.infrastructure.payment.mercado_pago_sdk_client.mercadopago.SDK",
+        lambda access_token: FailingSdk(),
+    )
+    client = MercadoPagoSdkClient("secret-token")
+
+    with pytest.raises(PaymentGatewayError) as error:
+        client.create_preference({}, "idempotency-key")
+
+    assert error.value.status_code == 403
+    assert "secret-token" not in str(error.value)
+    assert "MERCADO_PAGO_ACCESS_TOKEN" in str(error.value)
 
 
 def _settings(access_token: str = "test-token") -> MercadoPagoCheckoutSettings:
     return MercadoPagoCheckoutSettings(
         access_token=access_token,
-        api_base_url="https://api.mercadopago.com",
         success_url="https://app.test/success",
         failure_url="https://app.test/failure",
         pending_url="https://app.test/pending",

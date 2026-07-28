@@ -74,7 +74,6 @@ def build_payment_gateway(settings: Settings):
         return MercadoPagoCheckoutAdapter(
             MercadoPagoCheckoutSettings(
                 access_token=settings.MERCADO_PAGO_ACCESS_TOKEN,
-                api_base_url=settings.MERCADO_PAGO_API_BASE_URL,
                 success_url=settings.MERCADO_PAGO_SUCCESS_URL,
                 failure_url=settings.MERCADO_PAGO_FAILURE_URL,
                 pending_url=settings.MERCADO_PAGO_PENDING_URL,

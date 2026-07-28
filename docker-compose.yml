@@ -46,9 +46,8 @@ services:
       RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:-service-order.billing}
       RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-service-order.billing.events}
       RABBITMQ_CONSUME_ROUTING_KEYS: ${RABBITMQ_CONSUME_ROUTING_KEYS:-service-order.os}
-      MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN:-local-demo-token}
+      MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN:-}
       MERCADO_PAGO_ACCESS_TOKEN_FILE: ${MERCADO_PAGO_ACCESS_TOKEN_FILE:-}
-      MERCADO_PAGO_API_BASE_URL: ${MERCADO_PAGO_API_BASE_URL:-http://mercado-pago-mock:8080}
       MERCADO_PAGO_SUCCESS_URL: ${MERCADO_PAGO_SUCCESS_URL:-http://localhost:8002/payments/success}
       MERCADO_PAGO_FAILURE_URL: ${MERCADO_PAGO_FAILURE_URL:-http://localhost:8002/payments/failure}
       MERCADO_PAGO_PENDING_URL: ${MERCADO_PAGO_PENDING_URL:-http://localhost:8002/payments/pending}
@@ -82,8 +81,6 @@ services:
         condition: service_completed_successfully
       mailhog:
         condition: service_healthy
-      mercado-pago-mock:
-        condition: service_healthy
     networks:
       - service-order-billing-network
     extra_hosts:
@@ -109,8 +106,6 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-      mercado-pago-mock:
-        condition: service_healthy
     networks:
       - service-order-billing-network
     extra_hosts:
@@ -152,20 +147,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
-  mercado-pago-mock:
-    image: service-order-billing-service:dev
-    build: .
-    container_name: service-order-billing-mercado-pago-mock
-    entrypoint: ["python", "scripts/local/mercado_pago_mock.py"]
-    networks:
-      - service-order-billing-network
-    healthcheck:
-      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8080/health').read()"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 5s
 
 volumes:
   service_order_billing_postgres_data:

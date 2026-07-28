@@ -71,7 +71,6 @@ jobs:
           RABBITMQ_ROUTING_KEY=service-order.billing
           RABBITMQ_QUEUE=service-order.billing.events
           MERCADO_PAGO_ACCESS_TOKEN=mp-test-token-placeholder
-          MERCADO_PAGO_API_BASE_URL=https://api.mercadopago.com
           MERCADO_PAGO_SUCCESS_URL=https://api.example.com/payments/success
           MERCADO_PAGO_FAILURE_URL=https://api.example.com/payments/failure
           MERCADO_PAGO_PENDING_URL=https://api.example.com/payments/pending

@@ -266,7 +266,6 @@ def _mercado_pago_settings() -> Settings:
         CUSTOMER_JWT_SECRET="customer-secret-value-with-32-characters",
         CUSTOMER_JWT_ISSUER="service-order-auth-lambda/test",
         MERCADO_PAGO_ACCESS_TOKEN="test-token",
-        MERCADO_PAGO_API_BASE_URL="https://api.mercadopago.com",
     )
 
 
@@ -296,25 +295,24 @@ class FakeMercadoPagoGateway(MercadoPagoCheckoutAdapter):
         super().__init__(
             MercadoPagoCheckoutSettings(
                 access_token="test-token",
-                api_base_url="https://api.mercadopago.com",
                 success_url="https://app.test/success",
                 failure_url="https://app.test/failure",
                 pending_url="https://app.test/pending",
             ),
-            http_client=FakeMercadoPagoHttpClient(),
+            sdk_client=FakeMercadoPagoHttpClient(),
         )
 
 
 class FakeMercadoPagoHttpClient:
-    def post_json(self, url: str, headers: dict[str, str], payload: dict[str, str]):
-        del url, headers
+    def create_preference(self, payload: dict[str, str], idempotency_key: str):
+        del idempotency_key
         return {
             "id": f"pref-{payload['items'][0]['id']}",
             "sandbox_init_point": "https://sandbox.mercadopago.test/pref-1",
         }
 
-    def get_json(self, url: str, headers: dict[str, str]):
-        del url, headers
+    def search_payments(self, filters: dict[str, str]):
+        del filters
         return {
             "results": [
                 {

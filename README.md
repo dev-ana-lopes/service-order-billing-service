@@ -8,6 +8,8 @@ This service owns quote and payment rules. It integrates with Mercado Pago throu
 
 ## Architecture
 
+The complete Phase 4 architecture, Saga strategy, service boundaries, databases, communication and technology rationale is documented in [docs/architecture/fase4-final.md](docs/architecture/fase4-final.md).
+
 - `src/domain`: quote, payment, money, status transitions, and domain events.
 - `src/application`: use cases and ports for repositories, events, and payment gateways.
 - `src/infrastructure`: settings, logging, repositories, fake gateway, Mercado Pago adapter, observability, and messaging adapters.
@@ -68,13 +70,13 @@ The event envelope is JSON with `event_id`, `event_type`, `correlation_id`, `occ
 The application depends on `PaymentGatewayPort`. Infrastructure provides:
 
 - `FakePaymentGateway` for unit tests and local deterministic flows.
-- `MercadoPagoCheckoutAdapter` for Checkout Pro preference creation.
+- `MercadoPagoSdkClient` for the official Mercado Pago Python SDK.
+- `MercadoPagoCheckoutAdapter` for Checkout Pro preference creation and payment sync.
 
 Required environment variables:
 
 - `MERCADO_PAGO_ACCESS_TOKEN`
 - `MERCADO_PAGO_ACCESS_TOKEN_FILE`
-- `MERCADO_PAGO_API_BASE_URL`
 - `MERCADO_PAGO_SUCCESS_URL`
 - `MERCADO_PAGO_FAILURE_URL`
 - `MERCADO_PAGO_PENDING_URL`
@@ -82,7 +84,7 @@ Required environment variables:
 - `ENABLE_INTERNAL_TEST_ENDPOINTS`
 
 Access tokens must be provided through environment variables or Kubernetes secrets. They must never be committed or logged.
-When `PAYMENT_PROVIDER_MODE=mercado_pago` and `MERCADO_PAGO_API_BASE_URL=https://api.mercadopago.com`, use a valid Mercado Pago sandbox or production access token for that exact environment. The local `local-demo-token` only works with the checked-in mock.
+When `PAYMENT_PROVIDER_MODE=mercado_pago`, the official `mercadopago` Python SDK uses the Mercado Pago API and requires a valid sandbox or production access token. The local `local-demo-token` is not valid in this mode.
 
 In Mercado Pago mode, the adapter uses `X-Idempotency-Key` for preference creation and returns the hosted checkout URL. Use `POST /payments/{payment_id}/sync` to query `GET /v1/payments/search` by `external_reference`; the adapter validates the payment reference, amount, currency and uniqueness before publishing a transition. This integration does not use a webhook. `POST /payments/{payment_id}/confirm` and `/fail` remain restricted operational/test controls.
 
@@ -152,7 +154,6 @@ The default `docker compose up --build` stack includes:
 - `worker`
 - `postgres`
 - `mailhog`
-- `mercado-pago-mock`
 
 Useful local URLs:
 
@@ -165,7 +166,7 @@ Notes:
 
 - `docker compose up` forces `APP_RUNTIME_MODE=real`, even if `.env` still says `memory`.
 - The local Docker stack expects the shared RabbitMQ broker to already be running on `amqp://guest:guest@localhost:5672/%2F`, typically from `service-order-os-service`.
-- The local stack uses a checked-in Mercado Pago mock so quote approval works without a live sandbox token.
+- The local stack uses `PAYMENT_PROVIDER_MODE=mock` for deterministic quote approval without a live sandbox token.
 - Database migrations run through the dedicated `migrate` service before the API and worker start.
 
 ## Validation Evidence

@@ -35,11 +35,6 @@ def resolve_secret(raw_value: str, file_path: str | None, field_name: str) -> st
     return content
 
 
-def uses_real_mercado_pago_api(api_base_url: str) -> bool:
-    normalized_url = api_base_url.strip().lower().rstrip("/")
-    return normalized_url == "https://api.mercadopago.com"
-
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file_encoding="utf-8",
@@ -92,7 +87,6 @@ class Settings(BaseSettings):
     PAYMENT_PROVIDER_MODE: Literal["mock", "mercado_pago"] | None = None
     MERCADO_PAGO_ACCESS_TOKEN: str = ""
     MERCADO_PAGO_ACCESS_TOKEN_FILE: str | None = None
-    MERCADO_PAGO_API_BASE_URL: str = "https://api.mercadopago.com"
     MERCADO_PAGO_SUCCESS_URL: str = "http://localhost:8002/payments/success"
     MERCADO_PAGO_FAILURE_URL: str = "http://localhost:8002/payments/failure"
     MERCADO_PAGO_PENDING_URL: str = "http://localhost:8002/payments/pending"
@@ -135,25 +129,24 @@ class Settings(BaseSettings):
             self.MERCADO_PAGO_ACCESS_TOKEN_FILE,
             "MERCADO_PAGO_ACCESS_TOKEN",
         )
+        has_real_mercado_pago_token = self.MERCADO_PAGO_ACCESS_TOKEN not in {
+            "",
+            "local-demo-token",
+        }
         if self.PAYMENT_PROVIDER_MODE is None:
             self.PAYMENT_PROVIDER_MODE = (
                 "mercado_pago"
-                if (
-                    self.APP_RUNTIME_MODE == "real"
-                    and uses_real_mercado_pago_api(self.MERCADO_PAGO_API_BASE_URL)
-                    and self.MERCADO_PAGO_ACCESS_TOKEN not in {"", "local-demo-token"}
-                )
+                if (self.APP_RUNTIME_MODE == "real" and has_real_mercado_pago_token)
                 else "mock"
             )
         if (
             self.PAYMENT_PROVIDER_MODE == "mercado_pago"
-            and uses_real_mercado_pago_api(self.MERCADO_PAGO_API_BASE_URL)
-            and self.MERCADO_PAGO_ACCESS_TOKEN == "local-demo-token"
+            and self.MERCADO_PAGO_ACCESS_TOKEN in {"", "local-demo-token"}
         ):
             raise ValueError(
                 "MERCADO_PAGO_ACCESS_TOKEN must be set to a valid Mercado Pago "
-                "sandbox or production token when MERCADO_PAGO_API_BASE_URL "
-                "points to the real API."
+                "sandbox or production token when PAYMENT_PROVIDER_MODE is "
+                "mercado_pago."
             )
         if not self.JWT_ISSUER:
             self.JWT_ISSUER = f"service-order-os-service/{self.ENVIRONMENT}"

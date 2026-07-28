@@ -40,6 +40,5 @@ def test_real_mercado_pago_api_requires_non_demo_token():
         Settings(
             APP_RUNTIME_MODE="real",
             PAYMENT_PROVIDER_MODE="mercado_pago",
-            MERCADO_PAGO_API_BASE_URL="https://api.mercadopago.com",
             MERCADO_PAGO_ACCESS_TOKEN="local-demo-token",
         )

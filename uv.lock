@@ -704,6 +704,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mercadopago"
+version = "3.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c8/dc/68c6df1a4f1ce06bb16a31cdecc77557886c8dbee81d4b4ce9f69cd281f2/mercadopago-3.3.1.tar.gz", hash = "sha256:8715d3b095c5b2c20f58e7172bfe90f827ccdae5d53e478ba7730392e8363c81", size = 49227 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/6b/308ac9705e58557fd836fb1a720342b9d312750fa34d2ded13eda2c5608e/mercadopago-3.3.1-py3-none-any.whl", hash = "sha256:0d5ad57b7ad1cbc98f5221717230df43ee5070b9de9376605e7917f5abd7db17", size = 63917 },
+]
+
+[[package]]
 name = "mypy-extensions"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1335,6 +1347,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "email-validator" },
     { name = "fastapi" },
+    { name = "mercadopago" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-fastapi" },
@@ -1370,6 +1383,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.31.0,<0.32.0" },
     { name = "email-validator", specifier = ">=2.1.0,<3.0.0" },
     { name = "fastapi", specifier = ">=0.115.0,<0.116.0" },
+    { name = "mercadopago", specifier = ">=3.3.0,<4.0.0" },
     { name = "opentelemetry-api", specifier = ">=1.27.0,<2.0.0" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.27.0,<2.0.0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.48b0,<1.0.0" },
